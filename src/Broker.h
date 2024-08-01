@@ -15,28 +15,36 @@ private:
   const char* MQTT_password = "U5rlK4N8"; 
   const char* MQTT_server   = "science-vs352.science.uu.nl";
 
+  void subscriptions(){
+    client.subscribe("infob3it/student033/gordijn");
+  }
+
   void connect() {
     while (!client.connected()) {
       Serial.print("Attempting MQTT connection...");
 
-      if (client.connect("ESP32Client", MQTT_username, MQTT_password)) {
-        Serial.println("connected");  
-        client.subscribe("infob3it/student033/gordijn");
-      } 
-      else {
-        Serial.print("failed, rc=");
-        Serial.print(client.state());
-        Serial.println(" try again in 5 seconds");
-        delay(5000);
-      }
+      client.connect("ESP32Client", MQTT_username, MQTT_password) ? 
+      connected_succesfully() : retry_connection();
     }
+  }
+
+  void connected_succesfully(){
+    Serial.println("connected");  
+    subscriptions();
+  }
+
+  void retry_connection(){
+    Serial.print("failed, rc=");
+    Serial.print(client.state());
+    Serial.println(" try again in 5 seconds");
+    delay(5000);
   }
 
 public: 
   void begin(){
     client.setCallback(callback); 
     client.setServer(MQTT_server, 1883);
-    client.subscribe("infob3it/student033/gordijn");
+    subscriptions();
     connect();
   }
 

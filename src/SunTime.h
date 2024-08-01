@@ -1,17 +1,3 @@
-
-/*
-#include <ETH.h>
-#include <WiFiSTA.h>
-#include <WiFiGeneric.h>
-#include <WiFiType.h>
-#include <WiFiClient.h>
-#include <WiFi.h>
-#include <WiFiScan.h>
-#include <WiFiAP.h>
-#include <WiFiUdp.h>
-#include <WiFiServer.h>
-#include <WiFiMulti.h>
-*/
 #include <TimeLib.h>
 #include <sunset.h>
 
@@ -99,8 +85,8 @@ public:
   void setup() {
     sun.setPosition(LATITUDE, LONGITUDE, DST_OFFSET);
     sun.setTZOffset(DST_OFFSET);
-    setSyncProvider(getNtpTime);
-    setSyncInterval(60*60);
+    //setSyncProvider(getNtpTime);
+    //setSyncInterval(60*60);
     loop();
   }
 
@@ -116,20 +102,13 @@ public:
       sun.setCurrentDate(year(), month(), currentDay);
       sunrise = static_cast<int>(sun.calcSunrise());
       sunset  = static_cast<int>(sun.calcSunset());
+  
+      sunTG.send(String(sunrise));
+      sunTG.send(String(sunset));
 
       // Update the last update day
       lastUpdateDay = currentDay;
       lastUpdateHour = currentHour;
-    
-      Serial.print("Sunrise at ");
-      Serial.print(sunrise / 60);
-      Serial.print(":");
-      Serial.print(twoDigits(sunrise % 60));
-      Serial.print(", Sunset at ");
-      Serial.print(sunset / 60);
-      Serial.print(":");
-      Serial.print(twoDigits(sunset % 60));
-      Serial.println();
     }
 
     currentTimeMinutes = hour() * 60 + minute();
@@ -150,28 +129,5 @@ public:
       return true;
     }
     return false;
-  }
-
-  // utility function for digital clock display: prints leading 0
-  String twoDigits(int digits) {
-    if(digits < 10) {
-      String i = '0' + String(digits);
-      return i;
-    } else {
-      return String(digits);
-    }
-  }
-
-  String timeToString(time_t seconds) {
-    // Convert time_t to a tm struct
-    struct tm *timeInfo;
-    timeInfo = gmtime(&seconds); // Use gmtime for UTC; use localtime for local time
-
-    // Format the time into a string
-    char buffer[25];
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeInfo);
-
-    // Convert to Arduino String and return
-    return String(buffer);
   }
 };

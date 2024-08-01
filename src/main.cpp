@@ -1,12 +1,13 @@
 #include <Arduino.h>
+#include <EasyButton.h>
+#include <BlockNot.h>
+#include <time.h>
+
 #include "WiFiSetup.h"
+#include "broker.h"
 #include "Telegram.h"
 #include "suntime.h"
 #include "StepMotor.h"
-//#include <EasyButton.h>
-#include "broker.h"
-#include <BlockNot.h>
-#include <time.h>
 
 WiFiSetup wifi;
 Broker    broker;
@@ -14,13 +15,12 @@ Telegram  tg;
 SunTime   sunTime(tg);
 StepMotor stepMotor;
 
-//EasyButton button(16);
+EasyButton button(16);
 BlockNot   t5(5, SECONDS);
 BlockNot   t900(900, SECONDS);
 
 void sunTimeUpdate();
 void callback(String topic, byte* message, unsigned int length);
-const char *truth(bool x);
 
 void setup() {
   Serial.begin(9600);
@@ -30,17 +30,14 @@ void setup() {
   tg.begin();
   sunTime.setup();
   stepMotor.setup();
-  //button.begin();
+  button.begin();
 
-  tg.send(String(sunTime.sunrise));
-  tg.send(String(sunTime.sunset));
-
-  //button.onPressedFor (1500, []() {  stepMotor.close_when_paused ();  });
-  //button.onPressed    ([]()       {  stepMotor.start             ();  });
+  button.onPressedFor (1500, []() {  stepMotor.close_when_paused ();  });
+  button.onPressed    ([]()       {  stepMotor.start             ();  });
 }
 
 void loop() {
-  //button.read();
+  button.read();
 
   stepMotor.loop();
   sunTimeUpdate();
@@ -90,8 +87,4 @@ void callback(String topic, byte* message, unsigned int length) {
     if(messageTemp == "down")
       stepMotor.roll_down();
   }
-}
-
-const char *truth(bool x) { 
-  return x ? "true" : "false"; 
 }

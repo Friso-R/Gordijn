@@ -5,9 +5,6 @@
 #define BOT_TOKEN "7488293420:AAGXOYiaEx1iXSWArrqnEaA9v83VOnSv2nE"  // your Bot Token (Get from Botfather)
 #define CHAT_ID   "1373871797"
 
-#define WIFI_SSID "A-je-to! 2.4"
-#define WIFI_PASSWORD "HoldTheDoor!187"
-
 WiFiClientSecure secured_client;
 UniversalTelegramBot bot(BOT_TOKEN, secured_client);
 unsigned long bot_lasttime; // last time messages' scan has been done
@@ -32,7 +29,6 @@ public:
     configTime(0, 0, "pool.ntp.org"); // get UTC time via NTP
     time_t now = time(nullptr);
     Serial.println(now);
-    
     secured_client.setCACert(TELEGRAM_CERTIFICATE_ROOT);
   }
 
