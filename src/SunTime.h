@@ -85,8 +85,8 @@ public:
   void setup() {
     sun.setPosition(LATITUDE, LONGITUDE, DST_OFFSET);
     sun.setTZOffset(DST_OFFSET);
-    //setSyncProvider(getNtpTime);
-    //setSyncInterval(60*60);
+    setSyncProvider(getNtpTime);
+    setSyncInterval(60*60);
     loop();
   }
 
