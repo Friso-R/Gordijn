@@ -66,6 +66,10 @@ void sunTimeUpdate(){
       tg.send("sunset - down");
     }
   }
+  else{
+    if(t5.TRIGGERED)
+      tg.send("motor active");
+  }
 }
 
 // This function is executed when some device publishes a message to a topic that the ESP32 is subscribed to

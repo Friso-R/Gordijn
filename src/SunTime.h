@@ -97,6 +97,19 @@ public:
     static int lastUpdateHour = 0;
 
     // Check if the day has changed
+    if (currentHour != lastUpdateHour) {
+      // Update the sunrise and sunset times
+      sun.setCurrentDate(year(), month(), currentDay);
+
+      sunrise = 15;
+      sunset  = 45;
+      sunTG.send(String(sunrise));
+      sunTG.send(String(sunset));
+
+      lastUpdateHour = currentHour;
+    }
+/*
+    // Check if the day has changed
     if (currentDay != lastUpdateDay) {
       // Update the sunrise and sunset times
       sun.setCurrentDate(year(), month(), currentDay);
@@ -110,8 +123,9 @@ public:
       lastUpdateDay = currentDay;
       lastUpdateHour = currentHour;
     }
-
-    currentTimeMinutes = hour() * 60 + minute();
+*/
+    //currentTimeMinutes = hour() * 60 + minute();
+    currentTimeMinutes = minute();
     Serial.printf("%d-%02d-%02d %02d:%02d:%02d\n", year(), month(), day(), hour(), minute(), second());
   }
 
