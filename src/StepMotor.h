@@ -1,4 +1,5 @@
 #include "esp32-hal-gpio.h"
+#include <EasyButton.h>
 
 #ifndef STEPMOTOR_H
 #define STEPMOTOR_H
@@ -11,17 +12,19 @@
 
 #define STEP_SIZE   200
 
+EasyButton button(BUTTON_PIN);
+
 class StepMotor{
 
 private:
-  int numSteps = 95000;
-  int stepsTaken = 0;
+  int numSteps = 95000; 
 
 public:
-  bool up        = false;
-  bool paused    = true;
+  bool raised    = true;
+  bool paused    = false;
   bool direction = true; 
-  bool running   = false; 
+  bool active    = false; 
+  int stepsTaken = 0;
 
   void setup() {
     pinMode(DIR_PIN, OUTPUT);
@@ -31,30 +34,59 @@ public:
 
     pinMode(BUTTON_PIN, INPUT_PULLUP);
     digitalWrite(ATTACH_PIN, LOW); // Enable the driver by default
+
+    button.onPressedFor(1500, [this]() { revert(); });
+    button.onPressed   (      [this]() { start();  });
   }
 
-  void loop() {
-    if (running && !paused) {
-      step();
-      completed();
-    }
+  void update() {
+    button.read();
+    step();
+    completed();
+  }
+
+  bool idle(){
+    button.read();
+    
+    if (!active || paused)
+      return true;
+    return false;
   }
 
   void start(){
-    digitalWrite(LED_PIN, HIGH); // Turn on LED when button is pressed
+    if (!active) { //Start motor
+      active = true;
+      digitalWrite(LED_PIN, HIGH);
+    }
+    else toggle_pause();
+  }
 
-    if (!running) {
-      paused = false; // Start the motor
-      stepsTaken = 0; // Reset steps counter
-      running = true; // Update motor state
-      Serial.println("Motor started");
-    } 
-    else {
-      paused = !paused; 
-      if (paused) digitalWrite(LED_PIN, LOW);
+  void up_down(){ !active ? start() : revert(); }
+  
+  void revert(){
+    if (active){
+      direction = !direction;
+      raised = !raised;
+      stepsTaken = numSteps - stepsTaken;
+      paused = false; 
+    }   
+  }
+
+  void roll_up(){
+    direction = false;
+    if(!raised){
+      start();
+    }
+  }
+
+  void roll_down(){
+    direction = true;
+    if(raised){
+      start();
     }
   }
   
+private:
   void step(){
     digitalWrite(DIR_PIN, direction ? HIGH : LOW);
 
@@ -69,36 +101,28 @@ public:
 
   void completed(){
     if (stepsTaken >= numSteps || stepsTaken <= 0) {
-      Serial.println("Motor finished");
       digitalWrite(LED_PIN, LOW);
-      paused = true; 
-      running = false;
+      paused = false; 
+      active = false;
       direction = !direction;
-      up = !up;
+      raised = !raised;
+      stepsTaken = 0; 
     }
   }
 
-  void up_down(){ !running ? start() : close_when_paused(); }
   
-  void close_when_paused(){
-    direction = !direction;
-    stepsTaken = numSteps - stepsTaken;
-    paused = false;    
+
+  void toggle_pause(){  paused ? unpause() : pause();  }
+  
+  void pause(){
+    paused = true;
+    digitalWrite(LED_PIN, LOW);
+  }
+  void unpause(){
+    paused = false;
+    digitalWrite(LED_PIN, HIGH);
   }
 
-  void roll_up(){
-    if(!up){
-      direction = true;
-      start();
-    }
-  }
-
-  void roll_down(){
-    if(up){
-      direction = false;
-      start();
-    }
-  }
 };
 
 #endif

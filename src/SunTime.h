@@ -16,14 +16,15 @@ static WiFiUDP Udp; // Make Udp static
 unsigned int localPort = 8888;  // local port to listen for UDP packets
 
 SunSet sun;
-Telegram sunTG;
+//Telegram sunTG;
 
 class SunTime {
 public:
+/*
   SunTime(Telegram tempTG){
     sunTG = tempTG;
   }
-
+*/
   int sunrise;
   int sunset;
   int currentTimeMinutes;
@@ -36,7 +37,7 @@ public:
     // get a random server from the pool
     WiFi.hostByName(ntpServerName, ntpServerIP);
     Serial.print(ntpServerName);
-    sunTG.send(ntpServerName);
+    //sunTG.send(ntpServerName);
     Serial.print(": ");
     Serial.println(ntpServerIP);
     sendNTPpacket(ntpServerIP);
@@ -57,7 +58,7 @@ public:
       }
     }
     Serial.println("No NTP Response :-(");
-    sunTG.send("No NTP Response :-(");
+    //sunTG.send("No NTP Response :-(");
     return 0; // return 0 if unable to get the time
   }
 
@@ -95,7 +96,7 @@ public:
     int currentHour = hour();
     static int lastUpdateDay = 0; // Variable to track the last update day
     static int lastUpdateHour = 0;
-
+/*
     // Check if the day has changed
     if (currentHour != lastUpdateHour) {
       // Update the sunrise and sunset times
@@ -108,7 +109,7 @@ public:
 
       lastUpdateHour = currentHour;
     }
-/*
+*/
     // Check if the day has changed
     if (currentDay != lastUpdateDay) {
       // Update the sunrise and sunset times
@@ -116,17 +117,17 @@ public:
       sunrise = static_cast<int>(sun.calcSunrise());
       sunset  = static_cast<int>(sun.calcSunset());
   
-      sunTG.send(String(sunrise));
-      sunTG.send(String(sunset));
+      //sunTG.send(String(sunrise));
+      //sunTG.send(String(sunset));
 
       // Update the last update day
       lastUpdateDay = currentDay;
       lastUpdateHour = currentHour;
     }
-*/
+
     //currentTimeMinutes = hour() * 60 + minute();
     currentTimeMinutes = minute();
-    Serial.printf("%d-%02d-%02d %02d:%02d:%02d\n", year(), month(), day(), hour(), minute(), second());
+    //Serial.printf("%d-%02d-%02d %02d:%02d:%02d\n", year(), month(), day(), hour(), minute(), second());
   }
 
   bool Sunrise(){

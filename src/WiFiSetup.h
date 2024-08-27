@@ -5,8 +5,10 @@
 
 class WiFiSetup {
 private:
-  const char* ssid = "A-je-to! 2.4";
-  const char* password = "HoldTheDoor!187";
+  const char* ssid = "Appels";
+  const char* password = "R!kwjH0acuEP8JE";
+  //const char* ssid = "A-je-to! 2.4";
+  //const char* password = "HoldTheDoor!187";
   
   // Static function for handling the WiFi disconnection event
   static void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
