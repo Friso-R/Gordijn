@@ -16,15 +16,10 @@ static WiFiUDP Udp; // Make Udp static
 unsigned int localPort = 8888;  // local port to listen for UDP packets
 
 SunSet sun;
-//Telegram sunTG;
 
 class SunTime {
 public:
-/*
-  SunTime(Telegram tempTG){
-    sunTG = tempTG;
-  }
-*/
+
   int sunrise;
   int sunset;
   int currentTimeMinutes;
@@ -33,20 +28,16 @@ public:
     IPAddress ntpServerIP; // NTP server's ip address
 
     while (Udp.parsePacket() > 0); // discard any previously received packets
-    Serial.println("Transmit NTP Request");
+    //Serial.println("Transmit NTP Request");
     // get a random server from the pool
     WiFi.hostByName(ntpServerName, ntpServerIP);
-    Serial.print(ntpServerName);
-    //sunTG.send(ntpServerName);
-    Serial.print(": ");
-    Serial.println(ntpServerIP);
     sendNTPpacket(ntpServerIP);
 
     uint32_t beginWait = millis();
     while (millis() - beginWait < 1500) {
       int size = Udp.parsePacket();
       if (size >= NTP_PACKET_SIZE) {
-        Serial.println("Receive NTP Response");
+        //Serial.println("Receive NTP Response");
         Udp.read(packetBuffer, NTP_PACKET_SIZE);  // read packet into the buffer
         unsigned long secsSince1900;
         // convert four bytes starting at location 40 to a long integer
@@ -57,8 +48,7 @@ public:
         return secsSince1900 - 2208988800UL + (DST_OFFSET * SECS_PER_HOUR);
       }
     }
-    Serial.println("No NTP Response :-(");
-    //sunTG.send("No NTP Response :-(");
+    //Serial.println("No NTP Response :-(");
     return 0; // return 0 if unable to get the time
   }
 
@@ -87,7 +77,7 @@ public:
     sun.setPosition(LATITUDE, LONGITUDE, DST_OFFSET);
     sun.setTZOffset(DST_OFFSET);
     setSyncProvider(getNtpTime);
-    setSyncInterval(60*60);
+    setSyncInterval(60*60*12);
     loop();
   }
 
@@ -96,20 +86,7 @@ public:
     int currentHour = hour();
     static int lastUpdateDay = 0; // Variable to track the last update day
     static int lastUpdateHour = 0;
-/*
-    // Check if the day has changed
-    if (currentHour != lastUpdateHour) {
-      // Update the sunrise and sunset times
-      sun.setCurrentDate(year(), month(), currentDay);
 
-      sunrise = 15;
-      sunset  = 45;
-      sunTG.send(String(sunrise));
-      sunTG.send(String(sunset));
-
-      lastUpdateHour = currentHour;
-    }
-*/
     // Check if the day has changed
     if (currentDay != lastUpdateDay) {
       // Update the sunrise and sunset times
@@ -124,25 +101,13 @@ public:
       lastUpdateDay = currentDay;
       lastUpdateHour = currentHour;
     }
-
-    //currentTimeMinutes = hour() * 60 + minute();
-    currentTimeMinutes = minute();
+    currentTimeMinutes = hour() * 60 + minute();
     //Serial.printf("%d-%02d-%02d %02d:%02d:%02d\n", year(), month(), day(), hour(), minute(), second());
   }
 
-  bool Sunrise(){
-    if (currentTimeMinutes == sunrise) {
-      Serial.println("Sunrise time! Performing action...");
+  bool check(int setMinutes){
+    if (currentTimeMinutes == setMinutes) 
       return true;
-    }
-    return false;
-  }
-
-  bool Sunset(){
-    if (currentTimeMinutes == sunset) {
-      Serial.println("Sunset time! Performing action...");
-      return true;
-    }
     return false;
   }
 };

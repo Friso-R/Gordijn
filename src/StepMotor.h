@@ -15,16 +15,17 @@
 EasyButton button(BUTTON_PIN);
 
 class StepMotor{
-
 private:
-  int numSteps = 95000; 
 
-public:
+  int numSteps = 95000; 
+  int stepsTaken = 0;
+
   bool raised    = true;
   bool paused    = false;
   bool direction = true; 
   bool active    = false; 
-  int stepsTaken = 0;
+  
+public:
 
   void setup() {
     pinMode(DIR_PIN, OUTPUT);

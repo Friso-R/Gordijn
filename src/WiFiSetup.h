@@ -12,10 +12,10 @@ private:
   
   // Static function for handling the WiFi disconnection event
   static void WiFiStationDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) {
-    Serial.println("Disconnected from WiFi access point");
-    Serial.print("WiFi lost connection. Reason: ");
+    //Serial.println("Disconnected from WiFi access point");
+    //Serial.print("WiFi lost connection. Reason: ");
     Serial.println(info.wifi_sta_disconnected.reason);
-    Serial.println("Trying to Reconnect");
+    //Serial.println("Trying to Reconnect");
     WiFi.reconnect();
   }
 
@@ -30,12 +30,12 @@ public:
     int tries = 3;
     while (WiFi.status() != WL_CONNECTED) {
       WiFi.begin(ssid, password);
-      Serial.println(".");
+      //Serial.println(".");
       delay(3000);
       tries--;
       if (tries == 0) ESP.restart();
     }
-    Serial.println("WiFi connected");
+    //Serial.println("WiFi connected");
   }
 };
 
