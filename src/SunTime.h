@@ -27,7 +27,7 @@ public:
   static time_t getNtpTime() {
     IPAddress ntpServerIP; // NTP server's ip address
 
-    while (Udp.parsePacket() > 0); // discard any previously received packets
+    //while (Udp.parsePacket() > 0); // discard any previously received packets
     //Serial.println("Transmit NTP Request");
     // get a random server from the pool
     WiFi.hostByName(ntpServerName, ntpServerIP);

@@ -11,12 +11,18 @@ extern void callback(String topic, byte* message, unsigned int length);
 class Broker
 {
 private:
+  
   const char* MQTT_username = "student033"; 
   const char* MQTT_password = "U5rlK4N8"; 
   const char* MQTT_server   = "science-vs352.science.uu.nl";
-
+  /*
+  const char* MQTT_username = "leendertr"; 
+  const char* MQTT_password = "Halt2001"; 
+  const char* MQTT_server   = "192.168.1.213";
+  */
   void subscriptions(){
     client.subscribe("infob3it/student033/gordijn");
+    client.subscribe("infob3it/student033/schedule");
   }
 
   void connect() {
