@@ -83,9 +83,9 @@ public:
 
   void loop() {
     int currentDay = day();
-    int currentHour = hour();
+    //int currentHour = hour();
     static int lastUpdateDay = 0; // Variable to track the last update day
-    static int lastUpdateHour = 0;
+    //static int lastUpdateHour = 0;
 
     // Check if the day has changed
     if (currentDay != lastUpdateDay) {
@@ -99,7 +99,7 @@ public:
 
       // Update the last update day
       lastUpdateDay = currentDay;
-      lastUpdateHour = currentHour;
+      //lastUpdateHour = currentHour;
     }
     currentTimeMinutes = hour() * 60 + minute();
     //Serial.printf("%d-%02d-%02d %02d:%02d:%02d\n", year(), month(), day(), hour(), minute(), second());

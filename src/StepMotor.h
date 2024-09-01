@@ -21,8 +21,7 @@ class StepMotor{
 private:
 
   int numSteps = 95000; 
-  int stepsTaken = 0;
-  int percentage = -1;
+  int progress = -1;
 
   bool active    = false; 
   bool paused    = false;
@@ -30,7 +29,8 @@ private:
   bool direction = DOWNWARD; 
   
 public:
-  
+
+  int stepsTaken = 0;
 
   void setup() {
     pinMode(DIR_PIN   , OUTPUT);
@@ -46,8 +46,8 @@ public:
 
   void update() {
     button.read();
+    partly_open(); 
     step();
-    partly_open();
     completed();
   }
 
@@ -77,13 +77,12 @@ public:
     if (active){
       direction = !direction;
       position  = !position;
-      stepsTaken = numSteps - stepsTaken;
       paused = false; 
     }   
   }
 
   void open_partially(int p) {
-    percentage = p;
+    progress = p;
     start();
   }
 
@@ -104,7 +103,7 @@ private:
     digitalWrite(STEP_PIN, LOW);
     delayMicroseconds(STEP_SIZE);
 
-    stepsTaken++;
+    direction ? stepsTaken++ : stepsTaken--;
   }
 
   void completed() {
@@ -114,16 +113,17 @@ private:
       active = false;
       direction = !direction;
       position = !position;
-      stepsTaken = 0; 
-      if (position == HIGH);
+      if (position == HIGH);{
         digitalWrite(ATTACH_PIN, HIGH);
+        
+      }
     }
   }
 
   void partly_open(){
-    if (stepsTaken == percentage*950){
+    if (stepsTaken == progress*950){
       pause();
-      percentage = -1;
+      progress = -1;
     }
   }
 

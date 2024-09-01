@@ -21,12 +21,15 @@ void schedule(String messageTemp);
 void callback(String topic, byte* message, unsigned int length);
 
 void setup() {
+  Serial.begin(9600);
+  
   wifi.connect();
   broker.begin();
   button.begin();
   sunTime.setup();
   stepMotor.setup();
-  
+
+  broker.publish("status", "online");
 }
 
 void loop() {
@@ -35,6 +38,7 @@ void loop() {
   if (stepMotor.idle()){
     if(t60.TRIGGERED){
       sunTime.loop();
+      Serial.println(sunTime.currentTimeMinutes);
       if(sunTime.check(sunTime.sunrise))
         stepMotor.roll_up();
       if(sunTime.check(sunTime.sunset))
@@ -45,7 +49,12 @@ void loop() {
         stepMotor.roll_down();
     }
   }
-  else stepMotor.update();
+  else {
+    stepMotor.update();
+    int steps = stepMotor.stepsTaken ;
+    if (steps % 950 == 0)
+      broker.publish("progress/get", String(steps/950));
+  }
 }
 
 // This function is executed when some device publishes a message to a topic that the ESP32 is subscribed to
@@ -67,19 +76,21 @@ void callback(String topic, byte* message, unsigned int length) {
   }
   if(topic == "infob3it/student033/schedule")
     schedule(messageTemp);
-  if(topic == "infob3it/student033/percent") {
-    int percent;
-    sscanf(messageTemp.c_str(), "%u", percent);
-    stepMotor.open_partially(percent);
+  if(topic == "infob3it/student033/progress/set") {
+    int progress;
+    sscanf(messageTemp.c_str(), "%d", &progress);
+    stepMotor.open_partially(progress);
   }
 }
 
 void schedule(String messageTemp) {
   int h, m;
-  String direction;
-  sscanf(messageTemp.c_str(), "%u:%u %s", h, m, direction);
-  if (direction == "up")
+  char direction[10];
+  sscanf(messageTemp.c_str(), "%d:%d %s", &h, &m, &direction);
+  String dir = String(direction);
+
+  if (dir == "up")
     TimeUp = h*60 + m;
-  if (direction == "down")
+  if (dir == "down")
     TimeDown = h*60 + m;
 }

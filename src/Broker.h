@@ -23,6 +23,7 @@ private:
   void subscriptions(){
     client.subscribe("infob3it/student033/gordijn");
     client.subscribe("infob3it/student033/schedule");
+    client.subscribe("infob3it/student033/progress");
   }
 
   void connect() {
