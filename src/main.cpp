@@ -98,18 +98,24 @@ void check_sunTimes(){
     stepMotor.roll(HIGH);
 }
 
+String mins_to_time(int t) {
+  char timeChars[6];
+  sprintf(timeChars, "%d:%02d", t / 60, t % 60);
+  return String(timeChars);
+}
+
 void sunLoop(){
   sunTime.loop();
   check_sunTimes();
 
-    if (sunrise != sunTime.sunrise){
-      sunrise = sunTime.sunrise;
-      broker.publish("sunrise", String(sunrise));
-    }
-    if (sunset != sunTime.sunset){
-      sunset = sunTime.sunset;
-      broker.publish("sunset", String(sunset));
-    }
+  if (sunrise != sunTime.sunrise){
+    sunrise = sunTime.sunrise;
+    broker.publish("sunrise", mins_to_time(sunrise));
+  }
+  if (sunset != sunTime.sunset){
+    sunset = sunTime.sunset;
+    broker.publish("sunset", mins_to_time(sunset));
+  }
 }
 
 void open_curtain_partly(String messageTemp){

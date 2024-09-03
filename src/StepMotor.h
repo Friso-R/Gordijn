@@ -12,9 +12,6 @@
 
 #define STEP_SIZE   200
 
-#define UPWARD   false
-#define DOWNWARD true
-
 EasyButton button(BUTTON_PIN);
 
 class StepMotor{
@@ -26,7 +23,7 @@ private:
   bool active    = false; 
   bool paused    = false;
   bool position  = HIGH;
-  bool direction = DOWNWARD; 
+  bool direction = true; 
   
 public:
 
@@ -60,10 +57,11 @@ public:
   }
 
   void roll(bool pos) {
-    if (!active)
+    if (!active){
       if (position == pos) start_motor();
-      
-    else position == pos ? reverse() : unpause();
+    }
+    else 
+    { position == pos ? reverse() : unpause(); }
   }
 
   void start() { !active ? start_motor() : toggle_pause(); }
