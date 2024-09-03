@@ -15,9 +15,16 @@ StepMotor stepMotor;
 BlockNot   t5(5, SECONDS);
 BlockNot   t60(60, SECONDS);
 
-int TimeUp, TimeDown;
+bool circadianMode = 1;
+bool scheduleMode;
+int timeUp, timeDown;
+int sunrise, sunset;
 
-void schedule(String messageTemp);
+void open_curtain_partly(String messageTemp);
+int schedule(String messageTemp);
+void check_schedule();
+void check_sunTimes();
+void sunLoop();
 void callback(String topic, byte* message, unsigned int length);
 
 void setup() {
@@ -37,21 +44,13 @@ void loop() {
 
   if (stepMotor.idle()){
     if(t60.TRIGGERED){
-      sunTime.loop();
-      Serial.println(sunTime.currentTimeMinutes);
-      if(sunTime.check(sunTime.sunrise))
-        stepMotor.roll_up();
-      if(sunTime.check(sunTime.sunset))
-        stepMotor.roll_down();
-      if(sunTime.check(TimeUp))
-        stepMotor.roll_up();
-      if(sunTime.check(TimeDown))
-        stepMotor.roll_down();
+      if (scheduleMode) check_schedule();
+      if (circadianMode) sunLoop();
     }
   }
   else {
     stepMotor.update();
-    int steps = stepMotor.stepsTaken ;
+    int steps = stepMotor.stepsTaken;
     if (steps % 950 == 0)
       broker.publish("progress/get", String(steps/950));
   }
@@ -65,32 +64,56 @@ void callback(String topic, byte* message, unsigned int length) {
     messageTemp += (char)message[i];
 
   if(topic == "infob3it/student033/gordijn"){
-    if(messageTemp == "start")
-      stepMotor.start();
-    if(messageTemp == "reverse")
-      stepMotor.reverse();
-    if(messageTemp == "up")
-      stepMotor.roll_up();
-    if(messageTemp == "down")
-      stepMotor.roll_down();
+    if(messageTemp == "start")   stepMotor.start();
+    if(messageTemp == "reverse") stepMotor.reverse();
+    if(messageTemp == "up")      stepMotor.roll(LOW);
+    if(messageTemp == "down")    stepMotor.roll(HIGH);
   }
-  if(topic == "infob3it/student033/schedule")
-    schedule(messageTemp);
-  if(topic == "infob3it/student033/progress/set") {
-    int progress;
-    sscanf(messageTemp.c_str(), "%d", &progress);
-    stepMotor.open_partially(progress);
-  }
+  if(topic == "infob3it/student033/mode/circadian") circadianMode = messageTemp.toInt();  
+  if(topic == "infob3it/student033/mode/schedule")  scheduleMode = messageTemp.toInt();
+  if(topic == "infob3it/student033/schedule/up")    timeUp = schedule(messageTemp);
+  if(topic == "infob3it/student033/schedule/down")  timeUp = schedule(messageTemp);
+  if(topic == "infob3it/student033/progress/set")   open_curtain_partly(messageTemp);
 }
 
-void schedule(String messageTemp) {
-  int h, m;
-  char direction[10];
-  sscanf(messageTemp.c_str(), "%d:%d %s", &h, &m, &direction);
-  String dir = String(direction);
+int schedule(String messageTemp) {
+  int h, m, timeMin;
+  sscanf(messageTemp.c_str(), "%d:%d:%d", &h, &m);
 
-  if (dir == "up")
-    TimeUp = h*60 + m;
-  if (dir == "down")
-    TimeDown = h*60 + m;
+  timeMin = h*60 + m;
+  return timeMin;
+}
+
+void check_schedule(){
+  if(sunTime.check(timeUp))
+    stepMotor.roll(LOW);
+  if(sunTime.check(timeDown))
+    stepMotor.roll(HIGH);
+}
+
+void check_sunTimes(){
+  if(sunTime.check(sunTime.sunrise))
+    stepMotor.roll(LOW);
+  if(sunTime.check(sunTime.sunset))
+    stepMotor.roll(HIGH);
+}
+
+void sunLoop(){
+  sunTime.loop();
+  check_sunTimes();
+
+    if (sunrise != sunTime.sunrise){
+      sunrise = sunTime.sunrise;
+      broker.publish("sunrise", String(sunrise));
+    }
+    if (sunset != sunTime.sunset){
+      sunset = sunTime.sunset;
+      broker.publish("sunset", String(sunset));
+    }
+}
+
+void open_curtain_partly(String messageTemp){
+  int progress;
+  sscanf(messageTemp.c_str(), "%d", &progress);
+  stepMotor.open_partially(progress);
 }

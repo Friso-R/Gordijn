@@ -21,9 +21,7 @@ private:
   const char* MQTT_server   = "192.168.1.213";
   */
   void subscriptions(){
-    client.subscribe("infob3it/student033/gordijn");
-    client.subscribe("infob3it/student033/schedule");
-    client.subscribe("infob3it/student033/progress");
+    client.subscribe("infob3it/student033/#");
   }
 
   void connect() {

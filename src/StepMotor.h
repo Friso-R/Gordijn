@@ -46,8 +46,8 @@ public:
 
   void update() {
     button.read();
-    partly_open(); 
     step();
+    partly_open(); 
     completed();
   }
 
@@ -59,16 +59,11 @@ public:
     return false;
   }
 
-  void roll_up() {
-    direction = UPWARD;
-    if(position == LOW)
-      start();
-  }
-
-  void roll_down() {
-    direction = DOWNWARD;
-    if(position == HIGH)
-      start();
+  void roll(bool pos) {
+    if (!active)
+      if (position == pos) start_motor();
+      
+    else position == pos ? reverse() : unpause();
   }
 
   void start() { !active ? start_motor() : toggle_pause(); }
@@ -77,7 +72,7 @@ public:
     if (active){
       direction = !direction;
       position  = !position;
-      paused = false; 
+      unpause();
     }   
   }
 
@@ -91,6 +86,7 @@ private:
   void start_motor() {
     digitalWrite(ATTACH_PIN, LOW);
     active = true;
+    position  = !position;
     digitalWrite(LED_PIN, HIGH);
   }
 
@@ -112,7 +108,6 @@ private:
       paused = false; 
       active = false;
       direction = !direction;
-      position = !position;
       if (position == HIGH);{
         digitalWrite(ATTACH_PIN, HIGH);
         
