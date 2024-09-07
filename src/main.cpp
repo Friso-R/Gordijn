@@ -20,6 +20,7 @@ bool scheduleMode;
 int timeUp, timeDown;
 int sunrise, sunset;
 
+void refresh();
 void open_curtain_partly(String messageTemp);
 int schedule(String messageTemp);
 void check_schedule();
@@ -36,7 +37,7 @@ void setup() {
   sunTime.setup();
   stepMotor.setup();
 
-  broker.publish("status", "online");
+  refresh();
 }
 
 void loop() {
@@ -44,6 +45,7 @@ void loop() {
 
   if (stepMotor.idle()){
     if(t60.TRIGGERED){
+      refresh();
       if (scheduleMode) check_schedule();
       if (circadianMode) sunLoop();
     }
@@ -54,6 +56,10 @@ void loop() {
     if (steps % 950 == 0)
       broker.publish("progress/get", String(steps/950));
   }
+}
+
+void refresh(){
+  broker.publish("status", "online");
 }
 
 // This function is executed when some device publishes a message to a topic that the ESP32 is subscribed to

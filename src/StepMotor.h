@@ -95,7 +95,7 @@ private:
     delayMicroseconds(STEP_SIZE);
 
     digitalWrite(STEP_PIN, LOW);
-    delayMicroseconds(STEP_SIZE);
+    delayMicroseconds(100);
 
     direction ? stepsTaken++ : stepsTaken--;
   }
@@ -106,10 +106,7 @@ private:
       paused = false; 
       active = false;
       direction = !direction;
-      if (position == HIGH);{
-        digitalWrite(ATTACH_PIN, HIGH);
-        
-      }
+      digitalWrite(ATTACH_PIN, HIGH);
     }
   }
 
@@ -124,10 +121,12 @@ private:
   
   void pause() {
     paused = true;
+    digitalWrite(ATTACH_PIN, HIGH);
     digitalWrite(LED_PIN, LOW);
   }
   void unpause() {
     paused = false;
+    digitalWrite(ATTACH_PIN, LOW);
     digitalWrite(LED_PIN, HIGH);
   }
 
