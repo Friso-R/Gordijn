@@ -20,13 +20,15 @@ bool scheduleMode;
 int timeUp, timeDown;
 int sunrise, sunset;
 
-void refresh();
+int  schedule(String messageTemp);
+void sync();
+
 void open_curtain_partly(String messageTemp);
-int schedule(String messageTemp);
 void check_schedule();
 void check_sunTimes();
 void sunLoop();
 void callback(String topic, byte* message, unsigned int length);
+String mins_to_time(int t);
 
 void setup() {
   Serial.begin(9600);
@@ -37,7 +39,7 @@ void setup() {
   sunTime.setup();
   stepMotor.setup();
 
-  refresh();
+  sync();
 }
 
 void loop() {
@@ -45,7 +47,6 @@ void loop() {
 
   if (stepMotor.idle()){
     if(t60.TRIGGERED){
-      refresh();
       if (scheduleMode) check_schedule();
       if (circadianMode) sunLoop();
     }
@@ -58,28 +59,34 @@ void loop() {
   }
 }
 
-void refresh(){
+void sync(){
   broker.publish("status", "online");
+  broker.publish("progress/get", String(stepMotor.stepsTaken/950));
+  broker.publish("mode/circadian", String(circadianMode));
+  broker.publish("mode/schedule", String(scheduleMode));
+  broker.publish("sunrise", mins_to_time(sunTime.sunrise));
+  broker.publish("sunset" , mins_to_time(sunTime.sunset));
 }
 
 // This function is executed when some device publishes a message to a topic that the ESP32 is subscribed to
 void callback(String topic, byte* message, unsigned int length) {
-  String messageTemp;
+  String msg;
   
   for (int i = 0; i < length; i++)  
-    messageTemp += (char)message[i];
+    msg += (char)message[i];
 
   if(topic == "infob3it/student033/gordijn"){
-    if(messageTemp == "start")   stepMotor.start();
-    if(messageTemp == "reverse") stepMotor.reverse();
-    if(messageTemp == "up")      stepMotor.roll(LOW);
-    if(messageTemp == "down")    stepMotor.roll(HIGH);
+    if(msg == "start")   stepMotor.start();
+    if(msg == "reverse") stepMotor.reverse();
+    if(msg == "up")      stepMotor.roll(LOW);
+    if(msg == "down")    stepMotor.roll(HIGH);
   }
-  if(topic == "infob3it/student033/mode/circadian") circadianMode = messageTemp.toInt();  
-  if(topic == "infob3it/student033/mode/schedule")  scheduleMode = messageTemp.toInt();
-  if(topic == "infob3it/student033/schedule/up")    timeUp = schedule(messageTemp);
-  if(topic == "infob3it/student033/schedule/down")  timeUp = schedule(messageTemp);
-  if(topic == "infob3it/student033/progress/set")   open_curtain_partly(messageTemp);
+  if(topic == "infob3it/student033/mode/circadian") circadianMode = msg.toInt();  
+  if(topic == "infob3it/student033/mode/schedule")  scheduleMode = msg.toInt();
+  if(topic == "infob3it/student033/schedule/up")    timeUp = schedule(msg);
+  if(topic == "infob3it/student033/schedule/down")  timeDown = schedule(msg);
+  if(topic == "infob3it/student033/progress/set")   open_curtain_partly(msg);
+  if(topic == "infob3it/student033/status/sync")    sync();
 }
 
 int schedule(String messageTemp) {

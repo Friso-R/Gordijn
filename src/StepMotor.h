@@ -129,7 +129,6 @@ private:
     digitalWrite(ATTACH_PIN, LOW);
     digitalWrite(LED_PIN, HIGH);
   }
-
 };
 
 #endif
