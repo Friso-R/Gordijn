@@ -3,7 +3,7 @@
 
 #define LATITUDE        52.39200088742884
 #define LONGITUDE       4.6145287343396255
-#define DST_OFFSET      2
+#define DST_OFFSET      1
 
 const uint8_t _usDSTStart[22] = { 8,14,13,12,10, 9, 8,14,12,11,10, 9,14,13,12,11, 9 };
 const uint8_t _usDSTEnd[22]   = { 1, 7, 6, 5, 3, 2, 1, 7, 5, 4, 3, 2, 7, 6, 5, 4, 2 };
@@ -74,11 +74,19 @@ public:
   }
 
   void setup() {
+    configTime(3600, 3600, "pool.ntp.org");
+    delay(10000);
     sun.setPosition(LATITUDE, LONGITUDE, DST_OFFSET);
     sun.setTZOffset(DST_OFFSET);
-    setSyncProvider(getNtpTime);
+    setSyncProvider(getLocalTime);
     setSyncInterval(60*60*12);
     loop();
+  }
+  
+  static time_t getLocalTime() {
+    time_t now;
+    time(&now);  // Get the current epoch time
+    return now;
   }
 
   void loop() {
@@ -102,7 +110,7 @@ public:
       //lastUpdateHour = currentHour;
     }
     currentTimeMinutes = hour() * 60 + minute();
-    //Serial.printf("%d-%02d-%02d %02d:%02d:%02d\n", year(), month(), day(), hour(), minute(), second());
+    Serial.printf("%d-%02d-%02d %02d:%02d:%02d\n", year(), month(), day(), hour(), minute(), second());
   }
 
   bool check(int setMinutes){

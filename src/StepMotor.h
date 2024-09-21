@@ -9,6 +9,7 @@
 #define STEP_PIN    23 
 #define BUTTON_PIN  16
 #define LED_PIN     27
+#define MOSFET_PIN  17
 
 #define STEP_SIZE   200
 
@@ -82,10 +83,10 @@ public:
 private:
 
   void start_motor() {
-    digitalWrite(ATTACH_PIN, LOW);
+    driver_on();
+
     active = true;
     position  = !position;
-    digitalWrite(LED_PIN, HIGH);
   }
 
   void step() {
@@ -102,11 +103,11 @@ private:
 
   void completed() {
     if (stepsTaken >= numSteps || stepsTaken <= 0) {
-      digitalWrite(LED_PIN, LOW);
       paused = false; 
       active = false;
       direction = !direction;
-      digitalWrite(ATTACH_PIN, HIGH);
+
+      driver_off();
     }
   }
 
@@ -121,13 +122,24 @@ private:
   
   void pause() {
     paused = true;
-    digitalWrite(ATTACH_PIN, HIGH);
-    digitalWrite(LED_PIN, LOW);
+    driver_off();
   }
   void unpause() {
     paused = false;
-    digitalWrite(ATTACH_PIN, LOW);
-    digitalWrite(LED_PIN, HIGH);
+    driver_on();
+  }
+
+  void driver_on(){
+    digitalWrite(MOSFET_PIN,  LOW);
+    digitalWrite(ATTACH_PIN,  LOW);
+    digitalWrite(LED_PIN   , HIGH);
+    
+  }
+
+  void driver_off(){
+    digitalWrite(ATTACH_PIN, HIGH);
+    digitalWrite(LED_PIN   ,  LOW);
+    digitalWrite(MOSFET_PIN, HIGH);
   }
 };
 
