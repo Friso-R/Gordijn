@@ -12,6 +12,9 @@
 
 #define STEP_SIZE   200
 
+#define UP    0
+#define DOWN  1
+
 EasyButton button(BUTTON_PIN);
 
 class StepMotor{

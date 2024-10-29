@@ -25,7 +25,7 @@ public:
     if (!getLocalTime(&now)) {
       Serial.println("Failed to obtain time");
     }
-    Serial.println(&now, "%A, %B %d %Y %H:%M:%S");
+    //Serial.println(&now, "%A, %B %d %Y %H:%M:%S");
 
     nowTimeMins = now.tm_hour * 60 + now.tm_min;
     if (nowTimeMins == 1)
@@ -39,8 +39,6 @@ public:
   }
 
   bool check(int setMinutes){
-    if (nowTimeMins == setMinutes) 
-      return true;
-    return false;
+    return (nowTimeMins == setMinutes);
   }
 };

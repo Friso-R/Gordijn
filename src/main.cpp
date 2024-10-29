@@ -59,7 +59,7 @@ void monitor() {
 void run() {
   stepMotor.update();
   int steps = stepMotor.stepsTaken;
-  if (steps % 950 == 0)
+  if (steps % 950 == 475)
     broker.publish("progress/get", String(steps/950));
 }
 
@@ -82,8 +82,8 @@ void callback(String topic, byte* message, unsigned int length) {
   if(topic == "infob3it/student033/gordijn"){
     if(msg == "start")   stepMotor.start();
     if(msg == "reverse") stepMotor.reverse();
-    if(msg == "up")      stepMotor.roll(LOW);
-    if(msg == "down")    stepMotor.roll(HIGH);
+    if(msg == "up")      stepMotor.roll(UP);
+    if(msg == "down")    stepMotor.roll(DOWN);
   }
   if(topic == "infob3it/student033/mode/circadian") circadianMode = msg.toInt();  
   if(topic == "infob3it/student033/mode/schedule")  scheduleMode = msg.toInt();
@@ -103,16 +103,16 @@ int schedule(String messageTemp) {
 
 void check_schedule(){
   if(klok.check(timeUp))
-    stepMotor.roll(LOW);
+    stepMotor.roll(UP);
   if(klok.check(timeDown))
-    stepMotor.roll(HIGH);
+    stepMotor.roll(DOWN);
 }
 
 void check_sunTimes(){
   if(klok.check(klok.sunrise))
-    stepMotor.roll(LOW);
+    stepMotor.roll(UP);
   if(klok.check(klok.sunset))
-    stepMotor.roll(HIGH);
+    stepMotor.roll(DOWN);
 }
 
 String mins_to_time(int t) {
