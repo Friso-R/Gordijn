@@ -4,12 +4,12 @@
 
 #include "WiFiSetup.h"
 #include "broker.h"
-#include "suntime.h"
+#include "LocalTime.h"
 #include "StepMotor.h"
 
 WiFiSetup wifi;
 Broker    broker;
-SunTime   sunTime;
+LocalTime klok;
 StepMotor stepMotor;
 
 BlockNot   t5(5, SECONDS);
@@ -20,9 +20,10 @@ bool scheduleMode;
 int timeUp, timeDown;
 int sunrise, sunset;
 
+void monitor();
+void run();
 int  schedule(String messageTemp);
 void sync();
-
 void open_curtain_partly(String messageTemp);
 void check_schedule();
 void check_sunTimes();
@@ -36,7 +37,7 @@ void setup() {
   wifi.connect();
   broker.begin();
   button.begin();
-  sunTime.setup();
+  klok.setup();
   stepMotor.setup();
 
   sync();
@@ -44,19 +45,22 @@ void setup() {
 
 void loop() {
   broker.update();
+  stepMotor.idle() ? monitor() : run();
+}
 
-  if (stepMotor.idle()){
-    if(t60.TRIGGERED){
-      if (scheduleMode) check_schedule();
-      if (circadianMode) sunLoop();
-    }
+void monitor() {
+  if(t60.TRIGGERED){
+    klok.update();
+    if (scheduleMode) check_schedule();
+    if (circadianMode) sunLoop();
   }
-  else {
-    stepMotor.update();
-    int steps = stepMotor.stepsTaken;
-    if (steps % 950 == 0)
-      broker.publish("progress/get", String(steps/950));
-  }
+}
+
+void run() {
+  stepMotor.update();
+  int steps = stepMotor.stepsTaken;
+  if (steps % 950 == 0)
+    broker.publish("progress/get", String(steps/950));
 }
 
 void sync(){
@@ -64,8 +68,8 @@ void sync(){
   broker.publish("progress/get", String(stepMotor.stepsTaken/950));
   broker.publish("mode/circadian", String(circadianMode));
   broker.publish("mode/schedule", String(scheduleMode));
-  broker.publish("sunrise", mins_to_time(sunTime.sunrise));
-  broker.publish("sunset" , mins_to_time(sunTime.sunset));
+  broker.publish("sunrise", mins_to_time(klok.sunrise));
+  broker.publish("sunset" , mins_to_time(klok.sunset));
 }
 
 // This function is executed when some device publishes a message to a topic that the ESP32 is subscribed to
@@ -90,24 +94,24 @@ void callback(String topic, byte* message, unsigned int length) {
 }
 
 int schedule(String messageTemp) {
-  int h, m, timeMin;
-  sscanf(messageTemp.c_str(), "%d:%d:%d", &h, &m);
+  int h, m, s, timeMin;
+  sscanf(messageTemp.c_str(), "%d:%d:%d", &h, &m, &s);
 
   timeMin = h*60 + m;
   return timeMin;
 }
 
 void check_schedule(){
-  if(sunTime.check(timeUp))
+  if(klok.check(timeUp))
     stepMotor.roll(LOW);
-  if(sunTime.check(timeDown))
+  if(klok.check(timeDown))
     stepMotor.roll(HIGH);
 }
 
 void check_sunTimes(){
-  if(sunTime.check(sunTime.sunrise))
+  if(klok.check(klok.sunrise))
     stepMotor.roll(LOW);
-  if(sunTime.check(sunTime.sunset))
+  if(klok.check(klok.sunset))
     stepMotor.roll(HIGH);
 }
 
@@ -118,15 +122,14 @@ String mins_to_time(int t) {
 }
 
 void sunLoop(){
-  sunTime.loop();
   check_sunTimes();
 
-  if (sunrise != sunTime.sunrise){
-    sunrise = sunTime.sunrise;
+  if (sunrise != klok.sunrise){
+    sunrise = klok.sunrise;
     broker.publish("sunrise", mins_to_time(sunrise));
   }
-  if (sunset != sunTime.sunset){
-    sunset = sunTime.sunset;
+  if (sunset != klok.sunset){
+    sunset = klok.sunset;
     broker.publish("sunset", mins_to_time(sunset));
   }
 }

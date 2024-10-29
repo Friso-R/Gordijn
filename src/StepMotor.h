@@ -1,4 +1,3 @@
-#include "esp32-hal-gpio.h"
 #include <EasyButton.h>
 
 #ifndef STEPMOTOR_H
@@ -84,7 +83,7 @@ private:
 
   void start_motor() {
     driver_on();
-
+    
     active = true;
     position  = !position;
   }
@@ -133,9 +132,7 @@ private:
     digitalWrite(MOSFET_PIN,  LOW);
     digitalWrite(ATTACH_PIN,  LOW);
     digitalWrite(LED_PIN   , HIGH);
-    
   }
-
   void driver_off(){
     digitalWrite(ATTACH_PIN, HIGH);
     digitalWrite(LED_PIN   ,  LOW);
