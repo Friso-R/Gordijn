@@ -15,6 +15,8 @@
 #define UP    0
 #define DOWN  1
 
+extern void CreatePublishTask();
+
 EasyButton button(BUTTON_PIN);
 
 class StepMotor{
@@ -45,19 +47,12 @@ public:
   }
 
   void update() {
-    button.read();
     step();
     partly_open(); 
     completed();
   }
 
-  bool idle() {
-    button.read();
-    
-    if (!active || paused)
-      return true;
-    return false;
-  }
+  bool idle() { return (!active || paused); }
 
   void roll(bool pos) {
     if (!active){
@@ -89,6 +84,8 @@ private:
     
     active = true;
     position  = !position;
+
+    CreatePublishTask();
   }
 
   void step() {

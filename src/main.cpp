@@ -30,6 +30,9 @@ void check_sunTimes();
 void sunLoop();
 void callback(String topic, byte* message, unsigned int length);
 String mins_to_time(int t);
+void publishProgress(void *parameter);
+void CreatePublishTask();
+void publishProgress(void *parameter);
 
 void setup() {
   Serial.begin(9600);
@@ -39,12 +42,13 @@ void setup() {
   button.begin();
   klok.setup();
   stepMotor.setup();
-
+  
   sync();
 }
 
 void loop() {
   broker.update();
+  button.read();
   stepMotor.idle() ? monitor() : run();
 }
 
@@ -56,12 +60,7 @@ void monitor() {
   }
 }
 
-void run() {
-  stepMotor.update();
-  int steps = stepMotor.stepsTaken;
-  if (steps % 950 == 475)
-    broker.publish("progress/get", String(steps/950));
-}
+void run() { stepMotor.update(); }
 
 void sync(){
   broker.publish("status", "online");
@@ -139,3 +138,30 @@ void open_curtain_partly(String messageTemp){
   sscanf(messageTemp.c_str(), "%d", &progress);
   stepMotor.open_partially(progress);
 }
+
+void publishProgress(void *parameter) {
+  while (true) 
+  {
+    const int steps = stepMotor.stepsTaken;
+    if(steps % 950 == 0){
+      broker.publish("progress/get", String(steps/950));
+      vTaskDelay(50 / portTICK_PERIOD_MS);
+    }
+
+    if (stepMotor.idle())
+      vTaskDelete(NULL);
+  }
+}
+
+void CreatePublishTask() {
+  xTaskCreatePinnedToCore(
+    publishProgress,       // Function to run
+    "PublishTask",         // Task name
+    5000,                  // Stack size in bytes
+    NULL,                  // Parameter to pass
+    1,                     // Priority
+    NULL,                  // Task handle for external control
+    0                      // Core ID (0 = Core 0)
+  );
+}
+
