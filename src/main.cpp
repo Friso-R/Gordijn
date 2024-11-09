@@ -32,7 +32,6 @@ void callback(String topic, byte* message, unsigned int length);
 String mins_to_time(int t);
 void publishProgress(void *parameter);
 void CreatePublishTask();
-void publishProgress(void *parameter);
 
 void setup() {
   Serial.begin(9600);
@@ -49,7 +48,7 @@ void setup() {
 void loop() {
   broker.update();
   button.read();
-  stepMotor.idle() ? monitor() : run();
+  stepMotor.idle() ? monitor() : stepMotor.update();
 }
 
 void monitor() {
@@ -59,8 +58,6 @@ void monitor() {
     if (circadianMode) sunLoop();
   }
 }
-
-void run() { stepMotor.update(); }
 
 void sync(){
   broker.publish("status", "online");

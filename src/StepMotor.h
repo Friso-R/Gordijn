@@ -1,19 +1,20 @@
 #include <EasyButton.h>
+#include "Switch.h"
 
 #ifndef STEPMOTOR_H
 #define STEPMOTOR_H
 
-#define ATTACH_PIN  4  
-#define DIR_PIN     5  
-#define STEP_PIN    23 
 #define BUTTON_PIN  16
-#define LED_PIN     27
-#define MOSFET_PIN  17
-
 #define STEP_SIZE   200
 
 #define UP    0
 #define DOWN  1
+
+Switch ATTACH (4);
+Switch DIR    (5);
+Switch MOSFET (17);
+Switch STEP   (23);
+Switch LED    (27);
 
 extern void CreatePublishTask();
 
@@ -22,7 +23,7 @@ EasyButton button(BUTTON_PIN);
 class StepMotor{
 private:
 
-  int numSteps = 95000; 
+  int numSteps = 95000;
   int progress = -1;
 
   bool active    = false; 
@@ -35,11 +36,6 @@ public:
   int stepsTaken = 0;
 
   void setup() {
-    pinMode(DIR_PIN   , OUTPUT);
-    pinMode(STEP_PIN  , OUTPUT);
-    pinMode(LED_PIN   , OUTPUT);
-    pinMode(ATTACH_PIN, OUTPUT);
-
     pinMode(BUTTON_PIN, INPUT_PULLUP);
 
     button.onPressedFor(1000, [this]() { reverse(); });
@@ -89,13 +85,13 @@ private:
   }
 
   void step() {
-    digitalWrite(DIR_PIN, direction ? HIGH : LOW);
+    direction ? DIR.on() : DIR.off();
 
-    digitalWrite(STEP_PIN, HIGH);
-    delayMicroseconds(STEP_SIZE);
+    STEP.on();
+    delayMicroseconds(150);
 
-    digitalWrite(STEP_PIN, LOW);
-    delayMicroseconds(100);
+    STEP.off();
+    delayMicroseconds(80);
 
     direction ? stepsTaken++ : stepsTaken--;
   }
@@ -126,17 +122,18 @@ private:
   void unpause() {
     paused = false;
     driver_on();
+    CreatePublishTask();
   }
 
   void driver_on(){
-    digitalWrite(MOSFET_PIN,  LOW);
-    digitalWrite(ATTACH_PIN,  LOW);
-    digitalWrite(LED_PIN   , HIGH);
+    MOSFET.off();
+    ATTACH.off();
+    LED.on();
   }
   void driver_off(){
-    digitalWrite(ATTACH_PIN, HIGH);
-    digitalWrite(LED_PIN   ,  LOW);
-    digitalWrite(MOSFET_PIN, HIGH);
+    ATTACH.on();
+    LED.off();
+    MOSFET.on();
   }
 };
 
