@@ -32,17 +32,6 @@ void connect() {
   //init and get the time
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 }
-
-int nowTimeMin()
-{
-  struct tm timeinfo;
-  if(!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
-    return 0;
-  }
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S"); 
-  return timeinfo.tm_hour * 60 + timeinfo.tm_min;
-}
 };
 
 #endif

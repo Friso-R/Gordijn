@@ -4,7 +4,7 @@
 #ifndef STEPMOTOR_H
 #define STEPMOTOR_H
 
-#define BUTTON_PIN  16
+#define BUTTON_PIN  25
 #define STEP_SIZE   200
 
 #define UP    0

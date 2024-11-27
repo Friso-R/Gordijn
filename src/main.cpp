@@ -1,37 +1,18 @@
-#include <Arduino.h>
-#include <BlockNot.h>
-#include <time.h>
-
-#include "WiFiSetup.h"
-#include "broker.h"
-#include "LocalTime.h"
-#include "StepMotor.h"
+#include "Files.h"
 
 WiFiSetup wifi;
 Broker    broker;
 LocalTime klok;
 StepMotor stepMotor;
 
-BlockNot   t5(5, SECONDS);
-BlockNot   t60(60, SECONDS);
+BlockNot t5  (5,  SECONDS);
+BlockNot t60 (60, SECONDS);
 
-bool circadianMode = 1;
+bool circadianMode;
 bool scheduleMode;
-int timeUp, timeDown;
+int timeUp   = -1; 
+int timeDown = -1;
 int sunrise, sunset;
-
-void monitor();
-void run();
-int  schedule(String messageTemp);
-void sync();
-void open_curtain_partly(String messageTemp);
-void check_schedule();
-void check_sunTimes();
-void sunLoop();
-void callback(String topic, byte* message, unsigned int length);
-String mins_to_time(int t);
-void publishProgress(void *parameter);
-void CreatePublishTask();
 
 void setup() {
   Serial.begin(9600);
