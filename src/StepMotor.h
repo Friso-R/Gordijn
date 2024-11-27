@@ -4,6 +4,7 @@
 #ifndef STEPMOTOR_H
 #define STEPMOTOR_H
 
+#define MOSFET_PIN  17
 #define BUTTON_PIN  25
 #define STEP_SIZE   200
 
@@ -88,10 +89,10 @@ private:
     direction ? DIR.on() : DIR.off();
 
     STEP.on();
-    delayMicroseconds(150);
+    delayMicroseconds(200);
 
     STEP.off();
-    delayMicroseconds(80);
+    delayMicroseconds(100);
 
     direction ? stepsTaken++ : stepsTaken--;
   }
@@ -126,14 +127,14 @@ private:
   }
 
   void driver_on(){
-    MOSFET.off();
+    digitalWrite(MOSFET_PIN,  LOW);
     ATTACH.off();
     LED.on();
   }
   void driver_off(){
     ATTACH.on();
     LED.off();
-    MOSFET.on();
+    digitalWrite(MOSFET_PIN, HIGH);
   }
 };
 
