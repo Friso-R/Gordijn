@@ -1,21 +1,19 @@
 #include <EasyButton.h>
-#include "Switch.h"
 
 #ifndef STEPMOTOR_H
 #define STEPMOTOR_H
 
-#define MOSFET_PIN  17
-#define BUTTON_PIN  25
-#define STEP_SIZE   200
-
 #define UP    0
 #define DOWN  1
 
-Switch ATTACH (4);
-Switch DIR    (5);
-Switch MOSFET (17);
-Switch STEP   (23);
-Switch LED    (27);
+#define ATTACH_PIN  4  
+#define DIR_PIN     5  
+#define STEP_PIN    23 
+#define BUTTON_PIN  16
+#define LED_PIN     27
+#define MOSFET_PIN  17
+
+#define STEP_SIZE   200
 
 extern void CreatePublishTask();
 
@@ -37,6 +35,11 @@ public:
   int stepsTaken = 0;
 
   void setup() {
+    pinMode(DIR_PIN   , OUTPUT);
+    pinMode(STEP_PIN  , OUTPUT);
+    pinMode(LED_PIN   , OUTPUT);
+    pinMode(ATTACH_PIN, OUTPUT);
+
     pinMode(BUTTON_PIN, INPUT_PULLUP);
 
     button.onPressedFor(1000, [this]() { reverse(); });
@@ -86,12 +89,12 @@ private:
   }
 
   void step() {
-    direction ? DIR.on() : DIR.off();
+    digitalWrite(DIR_PIN, direction ? HIGH : LOW);
 
-    STEP.on();
-    delayMicroseconds(200);
+    digitalWrite(STEP_PIN, HIGH);
+    delayMicroseconds(STEP_SIZE);
 
-    STEP.off();
+    digitalWrite(STEP_PIN, LOW);
     delayMicroseconds(100);
 
     direction ? stepsTaken++ : stepsTaken--;
@@ -128,12 +131,12 @@ private:
 
   void driver_on(){
     digitalWrite(MOSFET_PIN,  LOW);
-    ATTACH.off();
-    LED.on();
+    digitalWrite(ATTACH_PIN,  LOW);
+    digitalWrite(LED_PIN   , HIGH);
   }
   void driver_off(){
-    ATTACH.on();
-    LED.off();
+    digitalWrite(ATTACH_PIN, HIGH);
+    digitalWrite(LED_PIN   ,  LOW);
     digitalWrite(MOSFET_PIN, HIGH);
   }
 };
