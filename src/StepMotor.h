@@ -9,7 +9,7 @@
 #define ATTACH_PIN  4  
 #define DIR_PIN     5  
 #define STEP_PIN    23 
-#define BUTTON_PIN  16
+#define BUTTON_PIN  25
 #define LED_PIN     27
 #define MOSFET_PIN  17
 
@@ -75,6 +75,25 @@ public:
   void open_partially(int p) {
     progress = p;
     start();
+  }
+
+  void retained_state(int prog){
+    progress = prog;
+    if (prog > 0){
+      
+      active    = true; 
+      paused    = true;
+      //position  = HIGH;
+      //direction = true; 
+      
+      stepsTaken = numSteps/100 * progress;
+
+    }
+    if (prog == 100){
+      position  = LOW;
+      direction = false;
+      stepsTaken = numSteps;
+    }
   }
 
 private:

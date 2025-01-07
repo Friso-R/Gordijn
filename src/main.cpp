@@ -9,9 +9,9 @@ BlockNot t5  (5,  SECONDS);
 BlockNot t60 (60, SECONDS);
 
 bool circadianMode;
-bool scheduleMode;
-int timeUp   = -1; 
-int timeDown = -1;
+bool scheduleMode = 1;
+int timeUp   = 10 * 60; 
+int timeDown = 16 * 60;
 int sunrise, sunset;
 
 void setup() {
@@ -42,11 +42,13 @@ void monitor() {
 
 void sync(){
   broker.publish("status", "online");
+  /*
   broker.publish("progress/get", String(stepMotor.stepsTaken/950));
   broker.publish("mode/circadian", String(circadianMode));
   broker.publish("mode/schedule", String(scheduleMode));
   broker.publish("sunrise", mins_to_time(klok.sunrise));
   broker.publish("sunset" , mins_to_time(klok.sunset));
+  */
 }
 
 // This function is executed when some device publishes a message to a topic that the ESP32 is subscribed to
@@ -67,6 +69,7 @@ void callback(String topic, byte* message, unsigned int length) {
   if(topic == "infob3it/student033/schedule/up")    timeUp = schedule(msg);
   if(topic == "infob3it/student033/schedule/down")  timeDown = schedule(msg);
   if(topic == "infob3it/student033/progress/set")   open_curtain_partly(msg);
+  if(topic == "infob3it/student033/progress/get")   stepMotor.retained_state(msg.toInt());
   if(topic == "infob3it/student033/status/sync")    sync();
 }
 
@@ -132,6 +135,7 @@ void publishProgress(void *parameter) {
 }
 
 void CreatePublishTask() {
+  
   xTaskCreatePinnedToCore(
     publishProgress,       // Function to run
     "PublishTask",         // Task name
@@ -141,5 +145,6 @@ void CreatePublishTask() {
     NULL,                  // Task handle for external control
     0                      // Core ID (0 = Core 0)
   );
+  
 }
 

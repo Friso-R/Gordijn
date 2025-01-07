@@ -29,7 +29,7 @@ private:
       Serial.print("Attempting MQTT connection...");
 
       client.connect("ESP32GordijnClient", MQTT_username, MQTT_password);
-      delay(500);
+      delay(2000);
       subscriptions();
     }
     Serial.println("connected"); 
@@ -42,15 +42,22 @@ public:
     connect();
   }
 
-  void update(){ client.loop(); }
+  void update(){ 
+    check_connection();
+    client.loop(); 
+  }
 
-  void publish(String topic, String message) {
-
-    if (!client.connected()) 
-      connect();
-    
+  void publish(String topic, String message, bool retain = false) {
+    check_connection();
     topic = "infob3it/student033/" + topic;
-    client.publish(topic.c_str(),   message.c_str());
+    client.publish(topic.c_str(),   message.c_str(), retain);
+  }
+
+  void check_connection(){
+    if (!client.connected()) {
+      WiFi.reconnect();
+      connect();
+    }
   }
 };
 
