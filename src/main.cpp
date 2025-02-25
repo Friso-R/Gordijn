@@ -14,6 +14,8 @@ int timeUp   = 10 * 60;
 int timeDown = 16 * 60;
 int sunrise, sunset;
 
+TaskHandle_t progressTaskHandle = NULL;
+
 void setup() {
   Serial.begin(9600);
   
@@ -53,24 +55,25 @@ void sync(){
 
 // This function is executed when some device publishes a message to a topic that the ESP32 is subscribed to
 void callback(String topic, byte* message, unsigned int length) {
+  topic = topic.substring(8);
   String msg;
   
   for (int i = 0; i < length; i++)  
     msg += (char)message[i];
 
-  if(topic == "infob3it/student033/gordijn"){
+  if(topic == "action"){
     if(msg == "start")   stepMotor.start();
     if(msg == "reverse") stepMotor.reverse();
     if(msg == "up")      stepMotor.roll(UP);
     if(msg == "down")    stepMotor.roll(DOWN);
-  }
-  if(topic == "infob3it/student033/mode/circadian") circadianMode = msg.toInt();  
-  if(topic == "infob3it/student033/mode/schedule")  scheduleMode = msg.toInt();
-  if(topic == "infob3it/student033/schedule/up")    timeUp = schedule(msg);
-  if(topic == "infob3it/student033/schedule/down")  timeDown = schedule(msg);
-  if(topic == "infob3it/student033/progress/set")   open_curtain_partly(msg);
-  if(topic == "infob3it/student033/progress/get")   stepMotor.retained_state(msg.toInt());
-  if(topic == "infob3it/student033/status/sync")    sync();
+  } 
+  if(topic == "mode/circadian"){ circadianMode = msg.toInt(); sunLoop(); }
+  if(topic == "mode/schedule")   scheduleMode = msg.toInt();
+  if(topic == "schedule/up")     timeUp = schedule(msg);
+  if(topic == "schedule/down")   timeDown = schedule(msg);
+  if(topic == "progress/set")    open_curtain_partly(msg);
+  //if(topic == "progress/get")   stepMotor.retained_state(msg.toInt());
+  if(topic == "status/sync")     sync();
 }
 
 int schedule(String messageTemp) {
@@ -121,30 +124,47 @@ void open_curtain_partly(String messageTemp){
 }
 
 void publishProgress(void *parameter) {
-  while (true) 
-  {
-    const int steps = stepMotor.stepsTaken;
-    if(steps % 950 == 0){
-      broker.publish("progress/get", String(steps/950));
-      vTaskDelay(50 / portTICK_PERIOD_MS);
-    }
+  //unsigned long start = millis();
+  int stepSize = 950;
+  bool motor_active = true;
 
-    if (stepMotor.idle())
-      vTaskDelete(NULL);
+  while (motor_active) 
+  {
+    motor_active = !stepMotor.idle();
+
+    const int steps = stepMotor.stepsTaken;
+    if(steps % stepSize == 0)
+    {
+      //unsigned long publishDuration = millis() - start;
+      //Serial.println(publishDuration);
+      //start = millis();
+      broker.publish("progress/get", String(steps/stepSize));
+      
+      vTaskDelay(300 / portTICK_PERIOD_MS);
+    }
+    //taskYIELD();
+    
   }
+  //Serial.println("Task deleted");
+  progressTaskHandle = NULL;
+  vTaskDelete(NULL); 
 }
 
 void CreatePublishTask() {
   
+  //Serial.print("progressTaskHandle: ");
+  //Serial.println((uint32_t)progressTaskHandle, HEX);  // Print as a hexadecimal memory address
+
+  if (progressTaskHandle == NULL) {
   xTaskCreatePinnedToCore(
     publishProgress,       // Function to run
     "PublishTask",         // Task name
-    5000,                  // Stack size in bytes
+    2000,                  // Stack size in bytes
     NULL,                  // Parameter to pass
-    1,                     // Priority
-    NULL,                  // Task handle for external control
+    999,                   // Priority
+    &progressTaskHandle,   // Task handle for external control
     0                      // Core ID (0 = Core 0)
   );
-  
+}
 }
 

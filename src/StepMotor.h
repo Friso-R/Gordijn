@@ -13,8 +13,6 @@
 #define LED_PIN     27
 #define MOSFET_PIN  17
 
-#define STEP_SIZE   200
-
 extern void CreatePublishTask();
 
 EasyButton button(BUTTON_PIN);
@@ -55,12 +53,13 @@ public:
   bool idle() { return (!active || paused); }
 
   void roll(bool pos) {
-    if (!active){
-      if (position == pos) start_motor();
-    }
-    else 
-    { position == pos ? reverse() : unpause(); }
+    bool base = (position == pos);
+
+    active ? reverse_or_continue_from(base) : leaveFrom(base); 
   }
+
+  void reverse_or_continue_from(bool fromBase) { fromBase ? reverse() : unpause(); }
+  void leaveFrom(bool atBase) { if (atBase) start_motor(); }
 
   void start() { !active ? start_motor() : toggle_pause(); }
   
@@ -76,18 +75,16 @@ public:
     progress = p;
     start();
   }
-
+/*
   void retained_state(int prog){
     progress = prog;
     if (prog > 0){
       
-      active    = true; 
-      paused    = true;
+       
       //position  = HIGH;
       //direction = true; 
       
       stepsTaken = numSteps/100 * progress;
-
     }
     if (prog == 100){
       position  = LOW;
@@ -96,11 +93,19 @@ public:
     }
   }
 
+
+*/
+
+void state_active(){
+  active    = true; 
+  paused    = true;
+
+}
 private:
 
   void start_motor() {
     driver_on();
-    
+
     active = true;
     position  = !position;
 
@@ -111,10 +116,10 @@ private:
     digitalWrite(DIR_PIN, direction ? HIGH : LOW);
 
     digitalWrite(STEP_PIN, HIGH);
-    delayMicroseconds(STEP_SIZE);
+    delayMicroseconds(200);
 
     digitalWrite(STEP_PIN, LOW);
-    delayMicroseconds(100);
+    delayMicroseconds(50);
 
     direction ? stepsTaken++ : stepsTaken--;
   }
@@ -141,6 +146,8 @@ private:
   void pause() {
     paused = true;
     driver_off();
+    //vTaskDelete(progressTaskHandle);
+    //progressTaskHandle = NULL;
   }
   void unpause() {
     paused = false;
@@ -158,6 +165,7 @@ private:
     digitalWrite(LED_PIN   ,  LOW);
     digitalWrite(MOSFET_PIN, HIGH);
   }
+
 };
 
 #endif
