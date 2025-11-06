@@ -7,11 +7,15 @@
 #define DOWN  1
 
 #define ATTACH_PIN  4  
-#define DIR_PIN     5  
-#define STEP_PIN    23 
-#define BUTTON_PIN  25
-#define LED_PIN     27
-#define MOSFET_PIN  17
+#define DIR_PIN     19  
+#define STEP_PIN    18 
+#define BUTTON_PIN  32
+#define LED_PIN     25
+//#define MOSFET_PIN  27
+
+#define SLEEP_PIN  17
+#define RESET_PIN  16
+
 
 extern void CreatePublishTask();
 
@@ -25,18 +29,23 @@ private:
 
   bool active    = false; 
   bool paused    = false;
-  bool position  = HIGH;
-  bool direction = true; 
+  bool position  = LOW;
+  bool direction = false; 
   
 public:
 
-  int stepsTaken = 0;
+  int stepsTaken = numSteps;
 
   void setup() {
     pinMode(DIR_PIN   , OUTPUT);
     pinMode(STEP_PIN  , OUTPUT);
     pinMode(LED_PIN   , OUTPUT);
     pinMode(ATTACH_PIN, OUTPUT);
+    pinMode(SLEEP_PIN , OUTPUT);
+    pinMode(RESET_PIN , OUTPUT);
+
+    digitalWrite(SLEEP_PIN,  HIGH);
+    digitalWrite(RESET_PIN,  HIGH);
 
     pinMode(BUTTON_PIN, INPUT_PULLUP);
 
@@ -156,14 +165,14 @@ private:
   }
 
   void driver_on(){
-    digitalWrite(MOSFET_PIN,  LOW);
+    //digitalWrite(MOSFET_PIN,  LOW);
     digitalWrite(ATTACH_PIN,  LOW);
     digitalWrite(LED_PIN   , HIGH);
   }
   void driver_off(){
     digitalWrite(ATTACH_PIN, HIGH);
     digitalWrite(LED_PIN   ,  LOW);
-    digitalWrite(MOSFET_PIN, HIGH);
+    //digitalWrite(MOSFET_PIN, HIGH);
   }
 
 };

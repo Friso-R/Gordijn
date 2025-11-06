@@ -51,7 +51,8 @@ public:
 
   void check_connection(){
     if (!client.connected()) {
-      WiFi.reconnect();
+      if(WiFi.status() != WL_CONNECTED)
+        WiFi.reconnect();
       connect();
     }
   }

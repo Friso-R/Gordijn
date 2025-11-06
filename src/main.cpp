@@ -5,7 +5,6 @@ Broker    broker;
 LocalTime klok;
 StepMotor stepMotor;
 
-BlockNot t5  (5,  SECONDS);
 BlockNot t60 (60, SECONDS);
 
 bool circadianMode;

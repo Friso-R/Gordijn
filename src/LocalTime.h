@@ -28,8 +28,10 @@ public:
     //Serial.println(&now, "%A, %B %d %Y %H:%M:%S");
 
     nowTimeMins = now.tm_hour * 60 + now.tm_min;
-    if (nowTimeMins == 1)
-      calcSunTimes();
+    if (nowTimeMins == 30){
+      esp_sleep_enable_timer_wakeup(5 * 60 * 1000);
+      esp_deep_sleep_start();
+    }
   }
 
   void calcSunTimes() {
