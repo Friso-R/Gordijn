@@ -28,6 +28,8 @@ void setup() {
 }
 
 void loop() {
+  wifi.handleTime();
+  broker.handleConnection();
   broker.update();
   button.read();
   stepMotor.idle() ? monitor() : stepMotor.update();
@@ -160,7 +162,7 @@ void CreatePublishTask() {
     "PublishTask",         // Task name
     2000,                  // Stack size in bytes
     NULL,                  // Parameter to pass
-    999,                   // Priority
+    2,                   // Priority
     &progressTaskHandle,   // Task handle for external control
     0                      // Core ID (0 = Core 0)
   );

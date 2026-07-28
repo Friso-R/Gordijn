@@ -11,7 +11,7 @@ extern void callback(String topic, byte* message, unsigned int length);
 class Broker
 {
 private:
-  const char* MQTT_username = "Gordijnclient"; 
+  const char* MQTT_username = "Kasclient"; 
   const char* MQTT_password = "Halt2001"; 
   const char* MQTT_server   = "192.168.1.150";
   

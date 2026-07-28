@@ -1,3 +1,5 @@
+#pragma once
+
 #include <sunset.h>
 
 #define LATITUDE        52.39200088742884
