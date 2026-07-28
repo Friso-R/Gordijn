@@ -18,7 +18,7 @@ TaskHandle_t progressTaskHandle = NULL;
 void setup() {
   Serial.begin(9600);
   
-  wifi.connect();
+  wifi.setup();
   broker.begin();
   button.begin();
   klok.setup();

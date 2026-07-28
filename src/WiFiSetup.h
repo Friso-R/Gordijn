@@ -18,19 +18,39 @@ const int   daylightOffset_sec = 0;
 public:
 
 // This function connects ESP32 to router
-void connect() {
-  int tries = 3;
-  while (WiFi.status() != WL_CONNECTED) {
-    WiFi.begin(ssid, password);
-    //Serial.println(".");
-    uint8_t status = WiFi.waitForConnectResult();
-    tries--;
-    if (tries == 0) ESP.restart();
-  }
-  Serial.println("WiFi connected");
+  bool timeConfigured = false;
 
-  //init and get the time
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  void setup() {
+    Serial.print("Connecting to WiFi: ");
+    Serial.println(ssid);
+    
+    // Zet de ESP32 in Station modus en start WiFi
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    
+    // Laat de ESP32 op de achtergrond zelf reconnecten als hij wegvalt!
+    WiFi.setAutoReconnect(true); 
+  }
+
+  // Deze functie roepen we straks in de main loop aan
+  void handleTime() {
+    // Haal pas de tijd op als de WiFi verbonden is, en doe dit maar 1 keer
+    if (WiFi.status() == WL_CONNECTED && !timeConfigured) {
+      configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+      timeConfigured = true;
+      Serial.println("\nWiFi Connected! Network Time Configured.");
+    }
+  }
+
+int nowTimeMin()
+{
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return -1;
+  }
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S"); 
+  return timeinfo.tm_hour * 60 + timeinfo.tm_min;
 }
 };
 
