@@ -125,28 +125,21 @@ void open_curtain_partly(String messageTemp){
 }
 
 void publishProgress(void *parameter) {
-  //unsigned long start = millis();
   int stepSize = 950;
-  bool motor_active = true;
+  int lastPublished = -1;
 
-  while (motor_active) 
-  {
-    motor_active = !stepMotor.idle();
+  while (!stepMotor.idle()) {
+    int currentSegment = stepMotor.stepsTaken / stepSize;
 
-    const int steps = stepMotor.stepsTaken;
-    if(steps % stepSize == 0)
-    {
-      //unsigned long publishDuration = millis() - start;
-      //Serial.println(publishDuration);
-      //start = millis();
-      broker.publish("progress/get", String(steps/stepSize));
-      
-      vTaskDelay(300 / portTICK_PERIOD_MS);
+    if (currentSegment != lastPublished) {
+      broker.publish("progress/get", String(currentSegment));
+      lastPublished = currentSegment;
     }
-    //taskYIELD();
-    
+
+    // CRUCIAAL: Altijd een kleine delay buiten de if-statement!
+    vTaskDelay(10 / portTICK_PERIOD_MS); 
   }
-  //Serial.println("Task deleted");
+
   progressTaskHandle = NULL;
   vTaskDelete(NULL); 
 }

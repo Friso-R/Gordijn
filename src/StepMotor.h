@@ -25,13 +25,13 @@ extern EasyButton button;
 
 class StepMotor {
 private:
-  int numSteps = 95000;
+  int numSteps = 55;
   int progress = -1;
 
   bool active    = false; 
   bool paused    = false;
   bool position  = LOW;
-  bool direction = false; 
+  bool direction = true; 
   
   // --- TIMER VARIABELEN ---
   hw_timer_t * motorTimer = NULL;
@@ -66,6 +66,8 @@ public:
     digitalWrite(RESET_PIN,  HIGH);
 
     pinMode(BUTTON_PIN, INPUT_PULLUP);
+
+    set_direction();
 
     button.onPressedFor(1000, [this]() { reverse(); });
     button.onPressed   (      [this]() { start();   });
@@ -127,16 +129,16 @@ private:
     CreatePublishTask();
   }
 
-  void completed() {
-    if (stepsTaken >= numSteps || stepsTaken <= 0) {
-      paused = false; 
-      active = false;
-      direction = !direction;
-
-      timerAlarmDisable(motorTimer); // Stop de hardware timer direct
-      driver_off();
-    }
+void completed() {
+  if ((direction == UP && stepsTaken >= numSteps) || 
+      (direction == DOWN && stepsTaken <= 0)) {
+    paused = false; 
+    active = false;
+    direction = !direction;
+    timerAlarmDisable(motorTimer); 
+    driver_off();
   }
+}
 
   void partly_open(){
     if (stepsTaken == progress*950){
@@ -161,14 +163,19 @@ private:
   }
 
   void driver_on(){
+    set_direction();
     digitalWrite(ATTACH_PIN,  LOW);
     digitalWrite(LED_PIN   , HIGH);
   }
   
   void driver_off(){
+    set_direction();
     digitalWrite(ATTACH_PIN, HIGH);
     digitalWrite(LED_PIN   ,  LOW);
   }
+
+  void set_direction() 
+  { digitalWrite(DIR_PIN, direction ? HIGH : LOW); }
 
 };
 
