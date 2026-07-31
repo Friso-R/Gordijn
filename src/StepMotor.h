@@ -4,8 +4,8 @@
 #include <Arduino.h>
 #include <EasyButton.h>
 
-#define UP    0
-#define DOWN  1
+#define UP    1
+#define DOWN  0
 
 #define ATTACH_PIN  4  
 #define DIR_PIN     19  
@@ -19,19 +19,17 @@
 
 extern void CreatePublishTask();
 
-// Door 'extern' te gebruiken weet de compiler dat deze knop ergens anders bestaat.
-// Dit voorkomt dubbele declaraties bij het linken van C++ bestanden.
-extern EasyButton button;
+
 
 class StepMotor {
 private:
-  int numSteps = 55;
+  
   int progress = -1;
 
-  bool active    = false; 
-  bool paused    = false;
-  bool position  = LOW;
-  bool direction = true; 
+  volatile bool active    = false; 
+  volatile bool paused    = false;
+  volatile bool position  = UP;
+  volatile bool direction = true; 
   
   // --- TIMER VARIABELEN ---
   hw_timer_t * motorTimer = NULL;
@@ -48,7 +46,7 @@ private:
   void IRAM_ATTR handleInterrupt();
 
 public:
-
+  int numSteps = 45000; // Aantal stappen voor volledig openen/sluite
   volatile int stepsTaken = numSteps;
 
   void setup() {
@@ -67,11 +65,10 @@ public:
 
     pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-    set_direction();
-
-    button.onPressedFor(1000, [this]() { reverse(); });
-    button.onPressed   (      [this]() { start();   });
-
+    digitalWrite(DIR_PIN, direction);
+    digitalWrite(STEP_PIN, LOW);
+    driver_off();
+    step_state = false;
     // Timer 0, Prescaler 80 (80MHz klok / 80 = 1 tick per microseconde)
     motorTimer = timerBegin(0, 80, true);
 
@@ -98,7 +95,7 @@ public:
   
   void reverse() {
     if (active){
-      direction = !direction;
+      reverse_direction();
       position  = !position;
       unpause();
     }   
@@ -109,17 +106,16 @@ public:
     start();
   }
 
-  void state_active(){
-    active    = true; 
-    paused    = true;
-  }
-
 private:
 
   void start_motor() {
+    timerAlarmDisable(motorTimer);
+    step_state = false;
+    digitalWrite(STEP_PIN, LOW);
     driver_on();
 
     active = true;
+    paused = false;
     position  = !position;
 
     // Start de hardware timer
@@ -130,18 +126,18 @@ private:
   }
 
 void completed() {
-  if ((direction == UP && stepsTaken >= numSteps) || 
-      (direction == DOWN && stepsTaken <= 0)) {
+  if ((direction == false && stepsTaken >= numSteps) || 
+      (direction == true && stepsTaken <= 0)) {
     paused = false; 
     active = false;
-    direction = !direction;
+    reverse_direction();
     timerAlarmDisable(motorTimer); 
     driver_off();
   }
 }
 
   void partly_open(){
-    if (stepsTaken == progress*950){
+    if (stepsTaken == progress){
       pause();
       progress = -1;
     }
@@ -152,6 +148,8 @@ void completed() {
   void pause() {
     paused = true;
     timerAlarmDisable(motorTimer); // Stop de timer tijdens pauze
+    step_state = false;
+    digitalWrite(STEP_PIN, LOW);
     driver_off();
   }
   
@@ -163,20 +161,20 @@ void completed() {
   }
 
   void driver_on(){
-    set_direction();
+    
     digitalWrite(ATTACH_PIN,  LOW);
     digitalWrite(LED_PIN   , HIGH);
   }
   
   void driver_off(){
-    set_direction();
     digitalWrite(ATTACH_PIN, HIGH);
     digitalWrite(LED_PIN   ,  LOW);
   }
 
-  void set_direction() 
-  { digitalWrite(DIR_PIN, direction ? HIGH : LOW); }
-
+  void reverse_direction(){ 
+    direction = !direction;
+    digitalWrite(DIR_PIN, direction); 
+  }
 };
 
 #endif

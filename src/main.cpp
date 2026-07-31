@@ -4,7 +4,7 @@ WiFiSetup wifi;
 Broker    broker;
 LocalTime klok;
 StepMotor stepMotor;
-
+EasyButton button(BUTTON_PIN);
 BlockNot t60 (60, SECONDS);
 
 bool circadianMode;
@@ -20,9 +20,11 @@ void setup() {
   
   wifi.setup();
   broker.begin();
-  button.begin();
   klok.setup();
   stepMotor.setup();
+  button.begin();
+  button.onPressedFor(1000, []() { stepMotor.reverse(); });
+  button.onPressed   (      []() { stepMotor.start();   });
   
   sync();
 }
@@ -65,8 +67,8 @@ void callback(String topic, byte* message, unsigned int length) {
   if(topic == "action"){
     if(msg == "start")   stepMotor.start();
     if(msg == "reverse") stepMotor.reverse();
-    if(msg == "up")      stepMotor.roll(UP);
-    if(msg == "down")    stepMotor.roll(DOWN);
+    if(msg == "up")      stepMotor.roll(false);
+    if(msg == "down")    stepMotor.roll(true);
   } 
   if(topic == "mode/circadian"){ circadianMode = msg.toInt(); sunLoop(); }
   if(topic == "mode/schedule")   scheduleMode = msg.toInt();
@@ -125,7 +127,8 @@ void open_curtain_partly(String messageTemp){
 }
 
 void publishProgress(void *parameter) {
-  int stepSize = 950;
+  /*
+  int stepSize = stepMotor.numSteps / 100; 
   int lastPublished = -1;
 
   while (!stepMotor.idle()) {
@@ -139,7 +142,7 @@ void publishProgress(void *parameter) {
     // CRUCIAAL: Altijd een kleine delay buiten de if-statement!
     vTaskDelay(10 / portTICK_PERIOD_MS); 
   }
-
+  */
   progressTaskHandle = NULL;
   vTaskDelete(NULL); 
 }
@@ -153,7 +156,7 @@ void CreatePublishTask() {
   xTaskCreatePinnedToCore(
     publishProgress,       // Function to run
     "PublishTask",         // Task name
-    2000,                  // Stack size in bytes
+    4096,                  // Stack size in bytes
     NULL,                  // Parameter to pass
     2,                   // Priority
     &progressTaskHandle,   // Task handle for external control

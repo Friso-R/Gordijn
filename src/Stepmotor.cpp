@@ -1,8 +1,5 @@
 #include "StepMotor.h"
 
-// Hier maken we de globale knop daadwerkelijk aan in het geheugen
-EasyButton button(BUTTON_PIN);
-
 // 1. Definitie van de veilige statische pointer
 StepMotor*& StepMotor::getInstance() {
   static StepMotor* instance = nullptr;
@@ -30,7 +27,7 @@ void IRAM_ATTR StepMotor::handleInterrupt() {
       step_state = false;
       timerAlarmWrite(motorTimer, 50, true);  // 50 microseconden LOW pauze
       
-      direction ? stepsTaken++ : stepsTaken--;
+      direction ? stepsTaken-- : stepsTaken++;
     }
   }
   
