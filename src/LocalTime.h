@@ -9,6 +9,9 @@
 SunSet sun;
 
 class LocalTime {
+private:
+  int lastTriggeredMin = -1; // Houdt bij welke minuut als laatst is getriggert
+
 public:
 
   int sunrise;
@@ -30,10 +33,10 @@ public:
     //Serial.println(&now, "%A, %B %d %Y %H:%M:%S");
 
     nowTimeMins = now.tm_hour * 60 + now.tm_min;
-    if (nowTimeMins == 30){
-      esp_sleep_enable_timer_wakeup(5 * 60 * 1000);
-      esp_deep_sleep_start();
-    }
+    // if (nowTimeMins == 30){
+    //   esp_sleep_enable_timer_wakeup(5 * 60 * 1000);
+    //   esp_deep_sleep_start();
+    // }
   }
 
   void calcSunTimes() {
@@ -43,6 +46,10 @@ public:
   }
 
   bool check(int setMinutes){
-    return (nowTimeMins == setMinutes);
+      if (nowTimeMins == setMinutes && lastTriggeredMin != setMinutes) {
+        lastTriggeredMin = setMinutes;
+        return true;
+      }
+      return false;
   }
 };

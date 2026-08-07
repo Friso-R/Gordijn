@@ -83,7 +83,19 @@ public:
 
   bool idle() { return (!active || paused); }
 
-  void roll(bool pos) {
+void roll(bool pos) {
+    // 1. HARDE BEVEILIGING:
+    // roll(UP) = vertrek vanaf UP (sluiten). Blokkeer als we al DICHT (0 stappen) zijn!
+    if (pos == UP && stepsTaken <= 0) {
+      Serial.println("Gordijn is al volledig DICHT (0 stappen) - commando genegeerd.");
+      return;
+    }
+    // roll(DOWN) = vertrek vanaf DOWN (openen). Blokkeer als we al OPEN (45000 stappen) zijn!
+    if (pos == DOWN && stepsTaken >= numSteps) {
+      Serial.println("Gordijn is al volledig OPEN (45000 stappen) - commando genegeerd.");
+      return;
+    }
+
     bool base = (position == pos);
     active ? reverse_or_continue_from(base) : leaveFrom(base); 
   }
@@ -109,6 +121,11 @@ public:
 private:
 
   void start_motor() {
+
+    if ((direction == true && stepsTaken <= 0) || (direction == false && stepsTaken >= numSteps)) {
+      return; 
+    }
+
     timerAlarmDisable(motorTimer);
     step_state = false;
     digitalWrite(STEP_PIN, LOW);
