@@ -1,55 +1,72 @@
 #pragma once
 
 #include <sunset.h>
+#include <time.h>
 
 #define LATITUDE        52.39200088742884
 #define LONGITUDE       4.6145287343396255
-#define DST_OFFSET      1
 
 SunSet sun;
 
 class LocalTime {
 private:
-  int lastTriggeredMin = -1; // Houdt bij welke minuut als laatst is getriggert
+  int lastTriggeredMin = -1;
+  int lastCalcDay = -1; // Tracks the last day we calculated sun times
 
 public:
-
   int sunrise;
   int sunset;
   int nowTimeMins;
   struct tm now;
 
   void setup() {
-    sun.setPosition(LATITUDE, LONGITUDE, DST_OFFSET);
-    sun.setTZOffset(DST_OFFSET);
-    update();
-    calcSunTimes();
+    sun.setPosition(LATITUDE, LONGITUDE, 0); // Offset is injected dynamically later
   }
   
   void update() {
     if (!getLocalTime(&now)) {
-      Serial.println("Failed to obtain time");
+      return; // Do nothing if time isn't synced via NTP yet
     }
-    //Serial.println(&now, "%A, %B %d %Y %H:%M:%S");
 
     nowTimeMins = now.tm_hour * 60 + now.tm_min;
-    // if (nowTimeMins == 30){
-    //   esp_sleep_enable_timer_wakeup(5 * 60 * 1000);
-    //   esp_deep_sleep_start();
-    // }
+
+    // Recalculate sun times only when the day changes (or on first boot)
+    if (now.tm_mday != lastCalcDay) {
+      calcSunTimes();
+      lastCalcDay = now.tm_mday;
+    }
   }
 
   void calcSunTimes() {
-    sun.setCurrentDate(now.tm_year, now.tm_mon, now.tm_mday);
+    // FIX 1: Correct the ESP32 time structure to match what Sunset library expects
+    // tm_year is years since 1900, tm_mon is 0-indexed (Jan = 0)
+    sun.setCurrentDate(now.tm_year + 1900, now.tm_mon + 1, now.tm_mday);
+    
+    // FIX 2: Dynamic Daylight Saving Time for the Sunset library
+    // now.tm_isdst is > 0 during summer time. NL is UTC+1 (Winter) or UTC+2 (Summer).
+    int currentOffset = 1 + (now.tm_isdst > 0 ? 1 : 0);
+    sun.setTZOffset(currentOffset);
+
     sunrise = static_cast<int>(sun.calcSunrise());
     sunset  = static_cast<int>(sun.calcSunset());
+
+    Serial.printf("Sun times updated: Sunrise at %02d:%02d, Sunset at %02d:%02d\n", 
+                  sunrise / 60, sunrise % 60, sunset / 60, sunset % 60);
   }
 
-  bool check(int setMinutes){
-      if (nowTimeMins == setMinutes && lastTriggeredMin != setMinutes) {
-        lastTriggeredMin = setMinutes;
-        return true;
-      }
-      return false;
+  bool check(int setMinutes) {
+    static int lastMinuteChecked = -1;
+    
+    // Reset the trigger lock when a new minute starts
+    if (nowTimeMins != lastMinuteChecked) {
+      lastTriggeredMin = -1;
+      lastMinuteChecked = nowTimeMins;
+    }
+
+    if (nowTimeMins == setMinutes && lastTriggeredMin != setMinutes) {
+      lastTriggeredMin = setMinutes;
+      return true;
+    }
+    return false;
   }
 };

@@ -56,7 +56,7 @@ void sync(){
   */
 }
 
-// This function is executed when some device publishes a message to a topic that the ESP32 is subscribed to
+// 1. Fix the MQTT callbacks
 void callback(String topic, byte* message, unsigned int length) {
   topic = topic.substring(8);
   String msg;
@@ -67,38 +67,32 @@ void callback(String topic, byte* message, unsigned int length) {
   if(topic == "action"){
     if(msg == "start")   stepMotor.start();
     if(msg == "reverse") stepMotor.reverse();
-    if(msg == "up")      stepMotor.roll(false);
-    if(msg == "down")    stepMotor.roll(true);
+    // Fixed mapping: "up" = OPEN, "down" = CLOSE
+    if(msg == "up")      stepMotor.roll(CURTAIN_OPEN);
+    if(msg == "down")    stepMotor.roll(CURTAIN_CLOSE);
   } 
   if(topic == "mode/circadian"){ circadianMode = msg.toInt(); sunLoop(); }
   if(topic == "mode/schedule")   scheduleMode = msg.toInt();
   if(topic == "schedule/up")     timeUp = schedule(msg);
   if(topic == "schedule/down")   timeDown = schedule(msg);
   if(topic == "progress/set")    open_curtain_partly(msg);
-  //if(topic == "progress/get")   stepMotor.retained_state(msg.toInt());
   if(topic == "status/sync")     sync();
 }
 
-int schedule(String messageTemp) {
-  int h, m, s, timeMin;
-  sscanf(messageTemp.c_str(), "%d:%d:%d", &h, &m, &s);
-
-  timeMin = h*60 + m;
-  return timeMin;
-}
-
+// 2. Fix the Schedule logic
 void check_schedule(){
   if(klok.check(timeUp))
-    stepMotor.roll(UP);
+    stepMotor.roll(CURTAIN_OPEN);  // 10:00 AM -> Open the curtain
   if(klok.check(timeDown))
-    stepMotor.roll(DOWN);
+    stepMotor.roll(CURTAIN_CLOSE); // 16:00 PM -> Close the curtain
 }
 
+// 3. Fix the Sun logic
 void check_sunTimes(){
   if(klok.check(klok.sunrise))
-    stepMotor.roll(UP);
+    stepMotor.roll(CURTAIN_OPEN);  // Sunrise -> Open the curtain
   if(klok.check(klok.sunset))
-    stepMotor.roll(DOWN);
+    stepMotor.roll(CURTAIN_CLOSE); // Sunset -> Close the curtain
 }
 
 String mins_to_time(int t) {
@@ -118,6 +112,18 @@ void sunLoop(){
     sunset = klok.sunset;
     broker.publish("sunset", mins_to_time(sunset));
   }
+}
+
+int schedule(String messageTemp) {
+  int h = 0, m = 0, s = 0;
+  
+  // sscanf returns how many items it successfully matched. 
+  // We check for >= 2 so it works even if MQTT sends "10:30" without seconds.
+  if (sscanf(messageTemp.c_str(), "%d:%d:%d", &h, &m, &s) >= 2) {
+    return h * 60 + m;
+  }
+  
+  return -1; // Fallback to avoid random times if the format is completely wrong
 }
 
 void open_curtain_partly(String messageTemp){

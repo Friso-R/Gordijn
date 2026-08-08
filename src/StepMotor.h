@@ -4,53 +4,39 @@
 #include <Arduino.h>
 #include <EasyButton.h>
 
-#define UP    1
-#define DOWN  0
+#define CURTAIN_OPEN  45000
+#define CURTAIN_CLOSE 0
 
 #define ATTACH_PIN  4  
 #define DIR_PIN     19  
 #define STEP_PIN    18 
 #define BUTTON_PIN  32
 #define LED_PIN     25
-//#define MOSFET_PIN  27
-
-#define SLEEP_PIN  17
-#define RESET_PIN  16
-
-extern void CreatePublishTask();
-
-
+#define SLEEP_PIN   17
+#define RESET_PIN   16
 
 class StepMotor {
 private:
-  
-  int progress = -1;
-
   volatile bool active    = false; 
   volatile bool paused    = false;
-  volatile bool position  = UP;
-  volatile bool direction = true; 
+  volatile bool direction = true; // true = moving towards 0 (DICHT), false = moving towards 45000 (OPEN)
   
-  // --- TIMER VARIABELEN ---
+  int targetStep = 0;
+
+  // Hardware timer variables
   hw_timer_t * motorTimer = NULL;
   portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
   volatile bool step_state = false;
   
-  // 1. Declaratie van de statische pointer
   static StepMotor*& getInstance();
-
-  // 2. Declaratie van de statische wrapper
   static void IRAM_ATTR onTimer();
-
-  // 3. Declaratie van de Interrupt Logica (Hier is de verdwaalde } verwijderd)
   void IRAM_ATTR handleInterrupt();
 
 public:
-  int numSteps = 45000; // Aantal stappen voor volledig openen/sluite
-  volatile int stepsTaken = numSteps;
+int numSteps = 45000;
+  volatile int stepsTaken = CURTAIN_OPEN; // Boots in the OPEN position
 
   void setup() {
-    // Sla een referentie naar DIT specifieke motor-object op in de statische pointer
     getInstance() = this;
 
     pinMode(DIR_PIN   , OUTPUT);
@@ -65,132 +51,131 @@ public:
 
     pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-    digitalWrite(DIR_PIN, direction);
-    digitalWrite(STEP_PIN, LOW);
     driver_off();
     step_state = false;
-    // Timer 0, Prescaler 80 (80MHz klok / 80 = 1 tick per microseconde)
+    
     motorTimer = timerBegin(0, 80, true);
-
-    // Koppel de timer aan onze static wrapper
     timerAttachInterrupt(motorTimer, &StepMotor::onTimer, true);
   }
 
   void update() {
-    partly_open(); 
-    completed();
+    if (!active || paused) return;
+
+    bool done = false;
+    portENTER_CRITICAL(&timerMux);
+    if (direction && stepsTaken <= targetStep) {
+      done = true;
+      stepsTaken = targetStep; // Clamp exact position
+    } else if (!direction && stepsTaken >= targetStep) {
+      done = true;
+      stepsTaken = targetStep;
+    }
+    portEXIT_CRITICAL(&timerMux);
+
+    if (done) {
+      stop_motor();
+    }
   }
 
   bool idle() { return (!active || paused); }
 
-void roll(bool pos) {
-    // 1. HARDE BEVEILIGING:
-    // roll(UP) = vertrek vanaf UP (sluiten). Blokkeer als we al DICHT (0 stappen) zijn!
-    if (pos == UP && stepsTaken <= 0) {
-      Serial.println("Gordijn is al volledig DICHT (0 stappen) - commando genegeerd.");
-      return;
-    }
-    // roll(DOWN) = vertrek vanaf DOWN (openen). Blokkeer als we al OPEN (45000 stappen) zijn!
-    if (pos == DOWN && stepsTaken >= numSteps) {
-      Serial.println("Gordijn is al volledig OPEN (45000 stappen) - commando genegeerd.");
+  // Universal movement command
+  void moveTo(int target) {
+    target = constrain(target, 0, numSteps);
+    
+    if (target == stepsTaken) {
+      Serial.print("Command ignored: Already at target step ");
+      Serial.println(target);
       return;
     }
 
-    bool base = (position == pos);
-    active ? reverse_or_continue_from(base) : leaveFrom(base); 
-  }
+    targetStep = target;
+    direction = (targetStep < stepsTaken); // true = moving towards 0 (DICHT/Close)
+    digitalWrite(DIR_PIN, direction);
 
-  void reverse_or_continue_from(bool fromBase) { fromBase ? reverse() : unpause(); }
-  void leaveFrom(bool atBase) { if (atBase) start_motor(); }
-
-  void start() { !active ? start_motor() : toggle_pause(); }
-  
-  void reverse() {
-    if (active){
-      reverse_direction();
-      position  = !position;
-      unpause();
-    }   
-  }
-
-  void open_partially(int p) {
-    progress = p;
-    start();
-  }
-
-private:
-
-  void start_motor() {
-
-    if ((direction == true && stepsTaken <= 0) || (direction == false && stepsTaken >= numSteps)) {
-      return; 
-    }
-
-    timerAlarmDisable(motorTimer);
-    step_state = false;
-    digitalWrite(STEP_PIN, LOW);
-    driver_on();
+    Serial.print("Moving from step ");
+    Serial.print(stepsTaken);
+    Serial.print(" -> to step ");
+    Serial.println(targetStep);
 
     active = true;
     paused = false;
-    position  = !position;
+    driver_on();
 
-    // Start de hardware timer
-    timerAlarmWrite(motorTimer, 200, true); // Zet eerste trigger
-    timerAlarmEnable(motorTimer);           // Zet de timer aan
-
-    CreatePublishTask();
+    timerAlarmWrite(motorTimer, 200, true);
+    timerAlarmEnable(motorTimer);
   }
 
-void completed() {
-  if ((direction == false && stepsTaken >= numSteps) || 
-      (direction == true && stepsTaken <= 0)) {
-    paused = false; 
-    active = false;
-    reverse_direction();
-    timerAlarmDisable(motorTimer); 
-    driver_off();
+  
+  //ROLL FUNCTION: Accepts explicit target positions instead of true/false
+  void roll(int targetPosition) {
+    moveTo(targetPosition);
   }
-}
 
-  void partly_open(){
-    if (stepsTaken == progress){
+  void open_partially(int p) {
+    moveTo(p);
+  }
+
+  // Handle physical button or MQTT "start"
+  void start() {
+    if (active && !paused) {
       pause();
-      progress = -1;
+    } else if (paused) {
+      unpause();
+    } else {
+      // If idle at or near open (45000), close it; otherwise open it
+      if (stepsTaken >= (numSteps / 2)) {
+        moveTo(0);
+      } else {
+        moveTo(numSteps);
+      }
     }
   }
 
-  void toggle_pause() {  paused ? unpause() : pause();  }
-  
+  // Handle MQTT "reverse"
+  void reverse() {
+    if (!active) return;
+    
+    // Flip destination to opposite end immediately
+    int newTarget = direction ? numSteps : 0;
+    moveTo(newTarget);
+  }
+
+private:
   void pause() {
     paused = true;
-    timerAlarmDisable(motorTimer); // Stop de timer tijdens pauze
-    step_state = false;
+    timerAlarmDisable(motorTimer);
     digitalWrite(STEP_PIN, LOW);
     driver_off();
+    Serial.println("Motor paused.");
   }
   
   void unpause() {
     paused = false;
+    digitalWrite(DIR_PIN, direction);
     driver_on();
-    timerAlarmEnable(motorTimer); // Hervat de timer
-    CreatePublishTask();
+    timerAlarmEnable(motorTimer);
+    Serial.println("Motor unpaused.");
   }
 
-  void driver_on(){
-    
-    digitalWrite(ATTACH_PIN,  LOW);
+  void stop_motor() {
+    active = false;
+    paused = false;
+    timerAlarmDisable(motorTimer);
+    digitalWrite(STEP_PIN, LOW);
+    driver_off();
+    Serial.print("Movement complete. Current step: ");
+    Serial.println(stepsTaken);
+  }
+
+  void driver_on() {
+    digitalWrite(ATTACH_PIN, LOW);
     digitalWrite(LED_PIN   , HIGH);
   }
   
-  void driver_off(){
+  void driver_off() {
     digitalWrite(ATTACH_PIN, HIGH);
-    digitalWrite(LED_PIN   ,  LOW);
-  }
-
-  void reverse_direction(){ 
-    direction = !direction;
-    digitalWrite(DIR_PIN, direction); 
+    digitalWrite(LED_PIN   , LOW);
   }
 };
 

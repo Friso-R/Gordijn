@@ -1,19 +1,16 @@
 #include "StepMotor.h"
 
-// 1. Definitie van de veilige statische pointer
 StepMotor*& StepMotor::getInstance() {
   static StepMotor* instance = nullptr;
   return instance;
 }
 
-// 2. Definitie van de statische wrapper
 void IRAM_ATTR StepMotor::onTimer() {
   if (getInstance() != nullptr) {
     getInstance()->handleInterrupt();
   }
 }
 
-// 3. Definitie van de daadwerkelijke Interrupt Logica
 void IRAM_ATTR StepMotor::handleInterrupt() {
   portENTER_CRITICAL_ISR(&timerMux);
   
@@ -21,13 +18,17 @@ void IRAM_ATTR StepMotor::handleInterrupt() {
     if (!step_state) {
       digitalWrite(STEP_PIN, HIGH);
       step_state = true;
-      timerAlarmWrite(motorTimer, 200, true); // 200 microseconden HIGH puls
+      timerAlarmWrite(motorTimer, 200, true); // 200 µs HIGH pulse
     } else {
       digitalWrite(STEP_PIN, LOW);
       step_state = false;
-      timerAlarmWrite(motorTimer, 50, true);  // 50 microseconden LOW pauze
+      timerAlarmWrite(motorTimer, 50, true);  // 50 µs LOW pause
       
-      direction ? stepsTaken-- : stepsTaken++;
+      if (direction) {
+        stepsTaken--;
+      } else {
+        stepsTaken++;
+      }
     }
   }
   
