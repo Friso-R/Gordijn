@@ -19,11 +19,12 @@ class StepMotor {
 private:
   volatile bool active    = false; 
   volatile bool paused    = false;
-  volatile bool direction = true; // true = moving towards 0 (DICHT), false = moving towards 45000 (OPEN)
+  volatile bool direction = true; 
   
-  int targetStep = 0;
+  // NEW: Add a flag for main loop cleanup and ensure target is volatile
+  volatile bool movementComplete = false;
+  volatile int targetStep = 0;
 
-  // Hardware timer variables
   hw_timer_t * motorTimer = NULL;
   portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
   volatile bool step_state = false;
@@ -33,8 +34,8 @@ private:
   void IRAM_ATTR handleInterrupt();
 
 public:
-int numSteps = 45000;
-  volatile int stepsTaken = CURTAIN_OPEN; // Boots in the OPEN position
+  int numSteps = 45000;
+  volatile int stepsTaken = CURTAIN_OPEN;
 
   void setup() {
     getInstance() = this;
@@ -59,27 +60,18 @@ int numSteps = 45000;
   }
 
   void update() {
-    if (!active || paused) return;
-
-    bool done = false;
-    portENTER_CRITICAL(&timerMux);
-    if (direction && stepsTaken <= targetStep) {
-      done = true;
-      stepsTaken = targetStep; // Clamp exact position
-    } else if (!direction && stepsTaken >= targetStep) {
-      done = true;
-      stepsTaken = targetStep;
-    }
-    portEXIT_CRITICAL(&timerMux);
-
-    if (done) {
-      stop_motor();
+    // Look for the completion flag set by the ISR
+    if (movementComplete) {
+      portENTER_CRITICAL(&timerMux);
+      movementComplete = false;
+      portEXIT_CRITICAL(&timerMux);
+      
+      stop_motor_cleanup();
     }
   }
 
   bool idle() { return (!active || paused); }
 
-  // Universal movement command
   void moveTo(int target) {
     target = constrain(target, 0, numSteps);
     
@@ -89,8 +81,15 @@ int numSteps = 45000;
       return;
     }
 
+    // Lock the state update so the ISR doesn't read partial data
+    portENTER_CRITICAL(&timerMux);
     targetStep = target;
-    direction = (targetStep < stepsTaken); // true = moving towards 0 (DICHT/Close)
+    direction = (targetStep < stepsTaken); 
+    active = true;
+    paused = false;
+    movementComplete = false;
+    portEXIT_CRITICAL(&timerMux);
+
     digitalWrite(DIR_PIN, direction);
 
     Serial.print("Moving from step ");
@@ -98,16 +97,12 @@ int numSteps = 45000;
     Serial.print(" -> to step ");
     Serial.println(targetStep);
 
-    active = true;
-    paused = false;
     driver_on();
 
     timerAlarmWrite(motorTimer, 200, true);
     timerAlarmEnable(motorTimer);
   }
-
   
-  //ROLL FUNCTION: Accepts explicit target positions instead of true/false
   void roll(int targetPosition) {
     moveTo(targetPosition);
   }
@@ -116,14 +111,12 @@ int numSteps = 45000;
     moveTo(p);
   }
 
-  // Handle physical button or MQTT "start"
   void start() {
     if (active && !paused) {
       pause();
     } else if (paused) {
       unpause();
     } else {
-      // If idle at or near open (45000), close it; otherwise open it
       if (stepsTaken >= (numSteps / 2)) {
         moveTo(0);
       } else {
@@ -132,11 +125,8 @@ int numSteps = 45000;
     }
   }
 
-  // Handle MQTT "reverse"
   void reverse() {
     if (!active) return;
-    
-    // Flip destination to opposite end immediately
     int newTarget = direction ? numSteps : 0;
     moveTo(newTarget);
   }
@@ -158,10 +148,9 @@ private:
     Serial.println("Motor unpaused.");
   }
 
-  void stop_motor() {
-    active = false;
-    paused = false;
-    timerAlarmDisable(motorTimer);
+  void stop_motor_cleanup() {
+    // ISR has already disabled the timer and stopped pulses. 
+    // This just executes the slow serial and pin states safely.
     digitalWrite(STEP_PIN, LOW);
     driver_off();
     Serial.print("Movement complete. Current step: ");

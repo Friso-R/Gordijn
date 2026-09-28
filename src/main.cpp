@@ -15,8 +15,18 @@ int sunrise, sunset;
 
 TaskHandle_t progressTaskHandle = NULL;
 
+// Helper to format minutes into a standard C-string buffer
+void mins_to_time(int t, char* buffer, size_t maxLen) {
+  snprintf(buffer, maxLen, "%d:%02d", t / 60, t % 60);
+}
+
+void check_schedule();
+void sunLoop();
+void sync();
+void monitor();
+
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   
   wifi.setup();
   broker.begin();
@@ -47,27 +57,57 @@ void monitor() {
 
 void sync(){
   broker.publish("status", "online");
+  
   /*
-  broker.publish("progress/get", String(stepMotor.stepsTaken/950));
-  broker.publish("mode/circadian", String(circadianMode));
-  broker.publish("mode/schedule", String(scheduleMode));
-  broker.publish("sunrise", mins_to_time(klok.sunrise));
-  broker.publish("sunset" , mins_to_time(klok.sunset));
+  char msgBuffer[16];
+  
+  snprintf(msgBuffer, sizeof(msgBuffer), "%d", stepMotor.stepsTaken/950);
+  broker.publish("progress/get", msgBuffer);
+  
+  snprintf(msgBuffer, sizeof(msgBuffer), "%d", circadianMode);
+  broker.publish("mode/circadian", msgBuffer);
+  
+  snprintf(msgBuffer, sizeof(msgBuffer), "%d", scheduleMode);
+  broker.publish("mode/schedule", msgBuffer);
+
+  char timeBuffer[16];
+  mins_to_time(klok.sunrise, timeBuffer, sizeof(timeBuffer));
+  broker.publish("sunrise", timeBuffer);
+  
+  mins_to_time(klok.sunset, timeBuffer, sizeof(timeBuffer));
+  broker.publish("sunset" , timeBuffer);
   */
 }
 
-// 1. Fix the MQTT callbacks
+int schedule(String messageTemp) {
+  int h = 0, m = 0, s = 0;
+  
+  // sscanf returns how many items it successfully matched. 
+  if (sscanf(messageTemp.c_str(), "%d:%d:%d", &h, &m, &s) >= 2) {
+    return h * 60 + m;
+  }
+  
+  return -1; 
+}
+
+void open_curtain_partly(String messageTemp){
+  int progress;
+  sscanf(messageTemp.c_str(), "%d", &progress);
+  stepMotor.open_partially(progress);
+}
+
 void callback(String topic, byte* message, unsigned int length) {
   topic = topic.substring(8);
-  String msg;
   
-  for (int i = 0; i < length; i++)  
-    msg += (char)message[i];
+  // Allocate memory once to prevent heap fragmentation on incoming messages
+  char msgBuffer[length + 1];
+  memcpy(msgBuffer, message, length);
+  msgBuffer[length] = '\0';
+  String msg = String(msgBuffer);
 
   if(topic == "action"){
     if(msg == "start")   stepMotor.start();
     if(msg == "reverse") stepMotor.reverse();
-    // Fixed mapping: "up" = OPEN, "down" = CLOSE
     if(msg == "up")      stepMotor.roll(CURTAIN_OPEN);
     if(msg == "down")    stepMotor.roll(CURTAIN_CLOSE);
   } 
@@ -79,69 +119,48 @@ void callback(String topic, byte* message, unsigned int length) {
   if(topic == "status/sync")     sync();
 }
 
-// 2. Fix the Schedule logic
 void check_schedule(){
   if(klok.check(timeUp))
-    stepMotor.roll(CURTAIN_OPEN);  // 10:00 AM -> Open the curtain
+    stepMotor.roll(CURTAIN_OPEN);  
   if(klok.check(timeDown))
-    stepMotor.roll(CURTAIN_CLOSE); // 16:00 PM -> Close the curtain
+    stepMotor.roll(CURTAIN_CLOSE); 
 }
 
-// 3. Fix the Sun logic
 void check_sunTimes(){
   if(klok.check(klok.sunrise))
-    stepMotor.roll(CURTAIN_OPEN);  // Sunrise -> Open the curtain
+    stepMotor.roll(CURTAIN_OPEN);  
   if(klok.check(klok.sunset))
-    stepMotor.roll(CURTAIN_CLOSE); // Sunset -> Close the curtain
-}
-
-String mins_to_time(int t) {
-  char timeChars[6];
-  sprintf(timeChars, "%d:%02d", t / 60, t % 60);
-  return String(timeChars);
+    stepMotor.roll(CURTAIN_CLOSE); 
 }
 
 void sunLoop(){
   check_sunTimes();
+  char timeBuffer[16];
 
   if (sunrise != klok.sunrise){
     sunrise = klok.sunrise;
-    broker.publish("sunrise", mins_to_time(sunrise));
+    mins_to_time(sunrise, timeBuffer, sizeof(timeBuffer));
+    broker.publish("sunrise", timeBuffer);
   }
   if (sunset != klok.sunset){
     sunset = klok.sunset;
-    broker.publish("sunset", mins_to_time(sunset));
+    mins_to_time(sunset, timeBuffer, sizeof(timeBuffer));
+    broker.publish("sunset", timeBuffer);
   }
-}
-
-int schedule(String messageTemp) {
-  int h = 0, m = 0, s = 0;
-  
-  // sscanf returns how many items it successfully matched. 
-  // We check for >= 2 so it works even if MQTT sends "10:30" without seconds.
-  if (sscanf(messageTemp.c_str(), "%d:%d:%d", &h, &m, &s) >= 2) {
-    return h * 60 + m;
-  }
-  
-  return -1; // Fallback to avoid random times if the format is completely wrong
-}
-
-void open_curtain_partly(String messageTemp){
-  int progress;
-  sscanf(messageTemp.c_str(), "%d", &progress);
-  stepMotor.open_partially(progress);
 }
 
 void publishProgress(void *parameter) {
   /*
   int stepSize = stepMotor.numSteps / 100; 
   int lastPublished = -1;
+  char msgBuffer[16];
 
   while (!stepMotor.idle()) {
     int currentSegment = stepMotor.stepsTaken / stepSize;
 
     if (currentSegment != lastPublished) {
-      broker.publish("progress/get", String(currentSegment));
+      snprintf(msgBuffer, sizeof(msgBuffer), "%d", currentSegment);
+      broker.publish("progress/get", msgBuffer);
       lastPublished = currentSegment;
     }
 
@@ -154,20 +173,15 @@ void publishProgress(void *parameter) {
 }
 
 void CreatePublishTask() {
-  
-  //Serial.print("progressTaskHandle: ");
-  //Serial.println((uint32_t)progressTaskHandle, HEX);  // Print as a hexadecimal memory address
-
   if (progressTaskHandle == NULL) {
-  xTaskCreatePinnedToCore(
-    publishProgress,       // Function to run
-    "PublishTask",         // Task name
-    4096,                  // Stack size in bytes
-    NULL,                  // Parameter to pass
-    2,                   // Priority
-    &progressTaskHandle,   // Task handle for external control
-    0                      // Core ID (0 = Core 0)
-  );
+    xTaskCreatePinnedToCore(
+      publishProgress,       
+      "PublishTask",         
+      4096,                  
+      NULL,                  
+      2,                   
+      &progressTaskHandle,   
+      0                      
+    );
+  }
 }
-}
-

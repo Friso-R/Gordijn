@@ -29,6 +29,14 @@ void IRAM_ATTR StepMotor::handleInterrupt() {
       } else {
         stepsTaken++;
       }
+
+      // FIX: Hardware-level bounds checking prevents network-blocking overshoot
+      if ((direction && stepsTaken <= targetStep) || (!direction && stepsTaken >= targetStep)) {
+        stepsTaken = targetStep;         // Clamp exact position
+        active = false;                  // Cut off motor logic immediately
+        movementComplete = true;         // Flag the main loop to run cleanup
+        timerAlarmDisable(motorTimer);   // Kill the interrupt timer
+      }
     }
   }
   
