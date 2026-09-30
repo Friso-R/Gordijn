@@ -5,9 +5,9 @@ Broker    broker;
 LocalTime klok;
 StepMotor stepMotor;
 EasyButton button(BUTTON_PIN);
-BlockNot t60 (60, SECONDS);
+BlockNot t60 (10, SECONDS); // Updated from 60 to 10 seconds to prevent missing scheduled minutes
 
-bool circadianMode;
+bool circadianMode = false; // Explicitly initialized to false
 bool scheduleMode = 1;
 int timeUp   = 10 * 60; 
 int timeDown = 16 * 60;
@@ -44,7 +44,11 @@ void loop() {
   broker.handleConnection();
   broker.update();
   button.read();
-  stepMotor.idle() ? monitor() : stepMotor.update();
+  
+  // Separated from ternary operator to ensure the time monitor 
+  // is never blocked by the physical motor movement
+  monitor();
+  stepMotor.update();
 }
 
 void monitor() {
@@ -91,19 +95,26 @@ int schedule(String messageTemp) {
 }
 
 void open_curtain_partly(String messageTemp){
-  int progress;
-  sscanf(messageTemp.c_str(), "%d", &progress);
-  stepMotor.open_partially(progress);
+  int progress = 0; // Initialized variable to prevent garbage memory usage
+  if (sscanf(messageTemp.c_str(), "%d", &progress) == 1) { // Checked for successful parsing
+    stepMotor.open_partially(progress);
+  }
 }
 
 void callback(String topic, byte* message, unsigned int length) {
-  topic = topic.substring(8);
+  // Prevent out-of-bounds crash on topics less than 8 characters long
+  if (topic.length() > 8) {
+    topic = topic.substring(8);
+  } else {
+    return;
+  }
   
-  // Allocate memory once to prevent heap fragmentation on incoming messages
-  char msgBuffer[length + 1];
-  memcpy(msgBuffer, message, length);
-  msgBuffer[length] = '\0';
-  String msg = String(msgBuffer);
+  // Safely construct the string without using Variable Length Arrays (VLA)
+  String msg = "";
+  msg.reserve(length);
+  for (unsigned int i = 0; i < length; i++) {
+    msg += (char)message[i];
+  }
 
   if(topic == "action"){
     if(msg == "start")   stepMotor.start();
